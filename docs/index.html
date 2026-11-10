@@ -118,7 +118,8 @@ ol li, ul li { margin: 4px 0; }
   <a href="#ble">Bluetooth</a>
   <a href="#tools">Tools &amp; logs</a>
   <a href="#bringup">Bring-up</a>
-  <a href="#dashes">Dashes</a>
+  <a href="#dashes">Android app</a>
+  <a href="#esp32-dash">ESP32 dash</a>
   <a href="#build">Build</a>
 </div></nav>
 
@@ -198,7 +199,7 @@ ol li, ul li { margin: 4px 0; }
 
   <div class="grid" style="margin-top:16px">
     <div class="card"><span class="tag">can-node/</span><h4>CAN node</h4><p>Listen-only CAN, decoder, RS-485 and BLE telemetry, SD logging of every frame, GPS time and position, battery sense, piezo taps.</p></div>
-    <div class="card"><span class="tag">esp32-dash/</span><h4>ESP32 dash</h4><p>T-Display-S3 dash driven by one piezo switch. Built-in scripted ride for testing without a bike.</p></div>
+    <div class="card"><span class="tag">esp32-dash/ · discontinued</span><h4>ESP32 dash</h4><p>The first display: a T-Display-S3 driven by one piezo switch. Replaced by the Android app, kept as a reference.</p></div>
     <div class="card"><span class="tag">android/</span><h4>Android dash</h4><p>Turns a Note 10 into a single-purpose dash. Touch pages, map split screen, TPMS caps, waypoints.</p></div>
     <div class="card"><span class="tag">can-node/logs/</span><h4>Bike captures</h4><p>Raw CSV captures from the 701 on the stand, the evidence behind the signal table.</p></div>
   </div>
@@ -448,11 +449,10 @@ for (size_t i = 0; i &lt; len; i++) {
 
 <!-- ================================================================== -->
 <section id="dashes">
-  <h2><small>Displays</small>The two dashes</h2>
+  <h2><small>Display</small>Android dash (Samsung Note 10)</h2>
   <div class="media">
     <video src="assets/android-dash-sim.mp4" controls muted playsinline preload="metadata" aria-label="30 second recording of the Android dash running simulated data"></video>
     <div>
-      <h3 style="margin-top:0">Android dash (Samsung Note 10)</h3>
       <p>Pages: Main, Fuel, Trip, Tyres, Map, Diagnostics (swipe to move, swipe down for a map app with a tacho strip).</p>
       <ul>
         <li>Vertical tacho with peak hold and shift lights; gear; coolant, fuel and battery bars; throttle (toggle on Diagnostics); GPS speed.</li>
@@ -460,14 +460,50 @@ for (size_t i = 0; i &lt; len; i++) {
         <li>Map: dive-computer heading tape, degrees and decimal minutes, trail, waypoints with names, navigate-to, what3words on demand.</li>
         <li>BLE TPMS caps (FOBO Bike 2 and others), split screen with Google Maps or Gaia, appliance (kiosk) mode.</li>
       </ul>
-      <h3>ESP32 dash (LilyGO T-Display-S3)</h3>
-      <ul>
-        <li>Tacho bar with shift light, large gear, coolant and battery with colour warnings.</li>
-        <li>Fuel, trip, tyres, GPS, night dimming, clock and diagnostics pages, all driven by one piezo switch (tap counts).</li>
-        <li><code>sim</code> build runs a scripted ~70 s ride through the real parser, with deliberate CRC errors and drops.</li>
-      </ul>
     </div>
   </div>
+  <!--ANDROID-GALLERY-->
+</section>
+
+<!-- ================================================================== -->
+<section id="esp32-dash">
+  <h2><small>Display · discontinued</small>ESP32 dash (LilyGO T-Display-S3)</h2>
+  <div class="callout"><b>Discontinued in favour of the Android app.</b> The ESP32 dash was the first display for the project and still builds and works, but development has moved to the Samsung Note 10 app: a bigger, sunlight-readable screen, touch instead of tap counts, maps and split screen, and no extra hardware. The code stays in <a href="https://github.com/DeepFocusAU/husky701-dash/tree/main/esp32-dash"><code>esp32-dash/</code></a> as a reference and a fallback, and the CAN node still drives it over RS-485 alongside Bluetooth.</div>
+
+  <p class="lead">A 320 × 170 landscape dash on an ESP32-S3, receiving the same 42-byte frames from the CAN node over a receive-only RS-485 link and driven by one piezo switch.</p>
+
+  <h3>Hardware</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Part</th><th>Detail</th></tr>
+    <tr><td>Board</td><td>LilyGO T-Display-S3 (ESP32-S3, 1.9″ 320 × 170 ST7789 LCD). LCD power on GPIO15 (must be HIGH), backlight PWM on GPIO38</td></tr>
+    <tr><td>Link</td><td>MAX3485 module, receive only: RO → GPIO18 (on the module used, the pin labelled <i>TXD</i>), DE and /RE → GND, DI not connected, 3V3 and GND. 115200 baud. No valid frame for 500 ms shows NO LINK</td></tr>
+    <tr><td>Bus bias</td><td>270–390 Ω from A to 3V3 and from B to GND at the dash, needed by the node's MAX13487E. Idle A–B above 0.2 V</td></tr>
+    <tr><td>Input</td><td>One momentary piezo switch on GPIO14, pulsing to GND. Functions are picked by the number of quick taps; a gesture ends 450 ms after the last tap</td></tr>
+    <tr><td>Toolchain</td><td>PlatformIO <code>espressif32@6.9.0</code> (Arduino-ESP32 2.0.17), because TFT_eSPI doesn't work on core 3.x. The TFT_eSPI setup is passed as build flags, so no library files are edited</td></tr>
+  </table></div>
+
+  <h3>Code layout</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Module</th><th>Role</th></tr>
+    <tr><td class="mono">main.cpp</td><td>Setup and loop: frame source (simulator or link), tap gestures, page switching, saving to flash</td></tr>
+    <tr><td class="mono">link.*</td><td>Receives frames on UART1 from RS-485: sync search, length, CRC-16 check, drop counter from <code>seq</code>, NO LINK timeout. Includes a <code>linktest</code> wiring check</td></tr>
+    <tr><td class="mono">simulator.*</td><td>Builds real frames for a scripted ~70 s ride (key on, cranking, warm-up, full-throttle run through 1–6, cruise in map 2, downshifts, hot idle, engine off) and feeds them through the real parser. Corrupts 1 frame in 250 and drops 1 in 400 on purpose</td></tr>
+    <tr><td class="mono">ui.*</td><td>All screen drawing with TFT_eSPI and custom digit fonts in <code>include/*Digits.h</code>: tacho bar with peak hold and shift light, gear, coolant, battery, and every page</td></tr>
+    <tr><td class="mono">fuel.*</td><td>Fuel estimate with no fuel sensor: flow ∝ rpm × (idle load + throttle), none on overrun, factor learned at each full fill-up</td></tr>
+    <tr><td class="mono">trip.*</td><td>Today (from the GPS date) and Since refuel: distance, fuel, L/100, riding time, average and maximum speed</td></tr>
+    <tr><td class="mono">battery.*</td><td>Resting voltage before each start and lowest voltage while cranking, with a trend over the last starts</td></tr>
+    <tr><td class="mono">nav.*</td><td>GPS position, breadcrumb waypoints, snail trail and track-back, saved to flash</td></tr>
+    <tr><td class="mono">tpms.*</td><td>Passive BLE scan for valve-cap tyre sensors (FOBO Bike 2, TPMSII, ITPMS and others)</td></tr>
+    <tr><td class="mono">clock.*</td><td>Time of day from the node's GPS; shows --:-- until there's a fix</td></tr>
+  </table></div>
+
+  <h3>Builds and pages</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Env</th><th>Data source</th></tr>
+    <tr><td class="mono">sim</td><td>Built-in simulator, just the T-Display-S3 needed (default)</td></tr>
+    <tr><td class="mono">live</td><td>Frames from the CAN node over RS-485</td></tr>
+  </table></div>
+  <p>Pages: Main (tacho, gear, coolant, battery, speed), Fuel, Trip, Tyres, GPS, Night dimming, Clock and Diagnostics. Nothing is saved to flash while the source is SIM, so test rides can't touch real trip, fuel or waypoint records. The Android app carries over all of these pages.</p>
 </section>
 
 <!-- ================================================================== -->

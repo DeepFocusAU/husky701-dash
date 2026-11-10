@@ -2,8 +2,8 @@
 
 An open-source digital dash for a **2023 Husqvarna 701**. A small ESP32 node under the seat listens to the bike's CAN bus and sends live telemetry to two dashes:
 
-- a **LilyGO T-Display-S3** ESP32 dash, over a wired RS-485 link
-- an **Android app** that runs a Samsung Note 10 as a full-screen dash, over Bluetooth LE
+- an **Android app** that runs a Samsung Note 10 as a full-screen dash, over Bluetooth LE (the current display)
+- a **LilyGO T-Display-S3** ESP32 dash, over a wired RS-485 link (the first display, now discontinued in favour of the Android app)
 
 **Docs site:** https://deepfocusau.github.io/husky701-dash/
 
@@ -25,7 +25,7 @@ An open-source digital dash for a **2023 Husqvarna 701**. A small ESP32 node und
 |---|---|---|
 | [`can-node/`](can-node/) | Firmware for the under-seat node: listen-only CAN, decoder, RS-485 and BLE telemetry, SD logging, GPS, battery sense, piezo tap input | PlatformIO, `espressif32@6.9.0` (Arduino-ESP32 2.0.17), NimBLE |
 | [`can-node/logs/`](can-node/logs/) | Raw CAN captures from the bike (on the stand), used to build the signal table | CSV: `ms,id,len,data` |
-| [`esp32-dash/`](esp32-dash/) | The T-Display-S3 dash: tacho, gear, coolant, battery, fuel, trip, tyres, GPS, diagnostics, built-in simulator | PlatformIO |
+| [`esp32-dash/`](esp32-dash/) | **Discontinued** in favour of the Android app. The original T-Display-S3 dash: tacho, gear, coolant, battery, fuel, trip, tyres, GPS, diagnostics, built-in simulator. Still builds, kept as a reference | PlatformIO |
 | [`android/`](android/) | The Android dash for a Samsung Note 10: same pages plus heading tape, waypoints, what3words, split screen with a map app, TPMS | Android Studio / Gradle, Kotlin, JDK 17 |
 | [`docs/`](docs/) | The GitHub Pages site: architecture, CAN signals, wire format, wiring | Static HTML |
 

@@ -1,5 +1,7 @@
 # Husky701 Dash (LilyGO T-Display-S3)
 
+> **Discontinued.** This was the first display for the project. Development has moved to the Android app in [`../android`](../android), which runs a Samsung Note 10 as the dash. This code still builds and works with the CAN node over RS-485, and is kept as a reference and a fallback.
+
 Custom dash for a 2023 Husqvarna 701. The main screen shows:
 
 - **Tacho bar** across the top (green → amber → red), with a peak-hold marker and a shift-light flash. The RPM figure sits top-left.
