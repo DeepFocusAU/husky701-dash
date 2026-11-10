@@ -1,7 +1,7 @@
 #include "can_decode.h"
 #include "config.h"
 
-// Signal map from the 2023 701 captures (Log 1/LOG00014.CSV and LOG00017.CSV). It differs from the
+// Signal map from the 2023 701 captures (logs/LOG00014.CSV and LOG00017.CSV). It differs from the
 // 2020 KTM 690 in blalor/ktm-can. README lists what is confirmed and what isn't.
 
 static inline uint16_t be16(const uint8_t *p) {

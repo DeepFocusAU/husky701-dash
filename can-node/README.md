@@ -81,7 +81,7 @@ In the `selftest` build, and in SIM mode from the phone, the LED flashes, so mad
 
 ## Signals
 
-From captures on this 2023 701 (`Log 1/LOG00014.CSV` and `LOG00017.CSV`, on the stand, with no ride yet). This bike differs from the 2020 KTM 690 Enduro R in [blalor/ktm-can](https://github.com/blalor/ktm-can) and [KTMComputer](https://github.com/ChickenPoptart/KTMComputer): there's no 0x12B, and the 0x540 bytes sit one position earlier. Bus: 500 kbit/s, 11-bit IDs.
+From captures on this 2023 701 (`logs/LOG00014.CSV` and `LOG00017.CSV`, on the stand, with no ride yet). This bike differs from the 2020 KTM 690 Enduro R in [blalor/ktm-can](https://github.com/blalor/ktm-can) and [KTMComputer](https://github.com/ChickenPoptart/KTMComputer): there's no 0x12B, and the 0x540 bytes sit one position earlier. Bus: 500 kbit/s, 11-bit IDs.
 
 | ID | Every | Bytes | Signal | Status |
 |----|-------|-------|--------|--------|
@@ -171,7 +171,7 @@ Below 3 V the node reports battery as unknown, so a disconnected divider doesn't
 
 ## Bluetooth link to the Android dash
 
-The node also sends telemetry over Bluetooth LE to the Android dash (`Husky701.Android`, a Samsung Note 10). This runs alongside RS-485, so the ESP32 dash keeps working.
+The node also sends telemetry over Bluetooth LE to the Android dash (`android/`, a Samsung Note 10). This runs alongside RS-485, so the ESP32 dash keeps working.
 
 - It advertises as `Husky701`. The phone finds it and reconnects by itself after key-off.
 - It sends every 2nd frame (25 per second), byte for byte the same as on RS-485 (`BLE_FRAME_DIV`).

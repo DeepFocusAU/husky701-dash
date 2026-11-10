@@ -6,7 +6,7 @@
 #   2. Settings > About phone > Software information: tap Build number 7 times.
 #   3. Settings > Developer options: turn on USB debugging. Plug in, accept the prompt.
 #
-# Run from the Husky701.Android folder:
+# Run from the android folder:
 #   powershell -ExecutionPolicy Bypass -File tools\provision.ps1
 #   powershell -ExecutionPolicy Bypass -File tools\provision.ps1 -Release   # undo everything
 #

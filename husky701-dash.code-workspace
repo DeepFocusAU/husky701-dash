@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{ "name": "can-node", "path": "can-node" },
+		{ "name": "esp32-dash", "path": "esp32-dash" },
+		{ "name": "android", "path": "android" },
+		{ "name": "repo (docs, README)", "path": "." }
+	],
+	"settings": {
+		"files.exclude": { "**/.pio": true, "**/.gradle": true }
+	}
+}

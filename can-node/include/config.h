@@ -59,7 +59,7 @@
 #define VBAT_SAMPLES       8        // averaged per frame, short enough to keep the cranking dip
 
 // ---------------- Bluetooth LE link to the Android dash ------
-// Runs alongside RS-485. The UUIDs must match BleTelemetry.kt in Husky701.Android.
+// Runs alongside RS-485. The UUIDs must match BleTelemetry.kt in the Android app (android/).
 #define BLE_ENABLE         1
 #define BLE_DEVICE_NAME    "Husky701"
 #define BLE_SERVICE_UUID   "7a1e0001-4b8f-4c1e-9a70-701d45a00001"

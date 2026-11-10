@@ -1,6 +1,6 @@
 # Husky701 Dash (Samsung Note 10)
 
-An Android version of the Husky701 dash, for running a Samsung Note 10 as a single-purpose bike dash. It does the same job as the ESP32 dash (`Husky701.Dsisplay`) and gets the same telemetry from the under-seat CAN node, over Bluetooth LE instead of RS-485.
+An Android version of the Husky701 dash, for running a Samsung Note 10 as a single-purpose bike dash. It does the same job as the ESP32 dash (`esp32-dash/`) and gets the same telemetry from the under-seat CAN node, over Bluetooth LE instead of RS-485.
 
 Both dashes can run at once: the CAN node sends RS-485 and Bluetooth side by side.
 

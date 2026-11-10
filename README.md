@@ -29,7 +29,7 @@ An open-source digital dash for a **2023 Husqvarna 701**. A small ESP32 node und
 | [`android/`](android/) | The Android dash for a Samsung Note 10: same pages plus heading tape, waypoints, what3words, split screen with a map app, TPMS | Android Studio / Gradle, Kotlin, JDK 17 |
 | [`docs/`](docs/) | The GitHub Pages site: architecture, CAN signals, wire format, wiring | Static HTML |
 
-Each folder has its own detailed README. The project folder names in those READMEs are the original working names: `Husky701.CANNode` = `can-node`, `Husky701.Dsisplay` = `esp32-dash`, `Husky701.Android` = `android`.
+Each folder has its own detailed README. Open `husky701-dash.code-workspace` in VS Code to get all three projects side by side (PlatformIO picks up `can-node` and `esp32-dash`).
 
 ## Quick start
 
