@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Husky701 Dash</title>
+<meta name="description" content="Open-source CAN bus dash for a 2023 Husqvarna 701: an ESP32 CAN node, an ESP32 dash and an Android dash.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f6f7f8; --panel: #ffffff; --ink: #14181b; --muted: #5b666d; --line: #dde2e5;
+  --accent: #e8730c; --accent-ink: #ffffff; --blue: #2f6fd6; --green: #1f9a4b; --red: #d0342c;
+  --code-bg: #eef1f3; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1214; --panel: #161c1f; --ink: #e8ecee; --muted: #93a0a7; --line: #273136;
+    --accent: #f39a2e; --accent-ink: #14181b; --blue: #5b9bff; --green: #43d17a; --red: #ff6b61;
+    --code-bg: #1d2529; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1214; --panel: #161c1f; --ink: #e8ecee; --muted: #93a0a7; --line: #273136;
+  --accent: #f39a2e; --accent-ink: #14181b; --blue: #5b9bff; --green: #43d17a; --red: #ff6b61;
+  --code-bg: #1d2529; --shadow: none;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 Inter, system-ui, sans-serif; }
+a { color: var(--blue); }
+code, pre, .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .9em; }
+code { background: var(--code-bg); padding: .1em .35em; border-radius: 4px; }
+pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; line-height: 1.45; }
+pre code { background: none; padding: 0; }
+header.hero { background: #11171a; color: #eef2f3; padding: 56px 16px 44px; border-bottom: 4px solid var(--accent); }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+.hero h1 { font-size: clamp(2rem, 6vw, 3.4rem); margin: 0 0 8px; font-weight: 800; letter-spacing: -.02em; }
+.hero h1 span { color: #f39a2e; }
+.hero p { max-width: 720px; color: #b9c4c9; font-size: 1.1rem; margin: 0 0 22px; }
+.btns { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn { display: inline-block; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+.btn.primary { background: #f39a2e; color: #14181b; }
+.btn.ghost { border: 1px solid #3a474d; color: #eef2f3; }
+nav.toc { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); }
+nav.toc .wrap { display: flex; gap: 4px; overflow-x: auto; padding-top: 6px; padding-bottom: 6px; }
+nav.toc a { white-space: nowrap; padding: 6px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: .92rem; font-weight: 600; }
+nav.toc a:hover { background: var(--code-bg); color: var(--ink); }
+main section { padding: 40px 0 8px; }
+h2 { font-size: 1.7rem; margin: 0 0 6px; letter-spacing: -.01em; }
+h2 small { display: block; color: var(--accent); font-size: .8rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; margin-bottom: 4px; }
+h3 { font-size: 1.15rem; margin: 28px 0 8px; }
+.lead { color: var(--muted); max-width: 760px; margin-top: 0; }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); }
+.card h4 { margin: 0 0 6px; font-size: 1.02rem; }
+.card p { margin: 0; color: var(--muted); font-size: .95rem; }
+.tag { display: inline-block; font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; background: var(--code-bg); color: var(--muted); margin-bottom: 8px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); margin: 10px 0 16px; }
+table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--code-bg); font-weight: 600; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.mono, th.mono { white-space: nowrap; }
+.ok { color: var(--green); font-weight: 600; }
+.warn { color: var(--accent); font-weight: 600; }
+.bad { color: var(--red); font-weight: 600; }
+.callout { border-left: 4px solid var(--accent); background: var(--panel); padding: 12px 16px; border-radius: 0 10px 10px 0; margin: 14px 0; box-shadow: var(--shadow); }
+.callout.red { border-color: var(--red); }
+.diagram { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow-x: auto; }
+.diagram svg { display: block; min-width: 760px; width: 100%; height: auto; }
+.diagram text { font-family: Inter, system-ui, sans-serif; fill: var(--ink); }
+.diagram .sub { fill: var(--muted); font-size: 12px; }
+.diagram .box { fill: var(--code-bg); stroke: var(--line); stroke-width: 1.5; }
+.diagram .node { fill: var(--panel); stroke: var(--accent); stroke-width: 2.5; }
+.diagram .wire { stroke: var(--muted); stroke-width: 2; fill: none; }
+.diagram .wire.can { stroke: var(--green); }
+.diagram .wire.rs { stroke: var(--blue); }
+.diagram .wire.ble { stroke: var(--accent); stroke-dasharray: 6 5; }
+.diagram .lbl { font-size: 12px; font-weight: 600; }
+.bytes { display: flex; flex-wrap: wrap; gap: 3px; margin: 10px 0 4px; }
+.bytes div { flex: 0 0 auto; min-width: 44px; padding: 6px 6px; border-radius: 6px; font: 600 .74rem/1.25 "JetBrains Mono", monospace; text-align: center; background: var(--code-bg); border: 1px solid var(--line); }
+.bytes div span { display: block; color: var(--muted); font-weight: 400; }
+.bytes .sync { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.bytes .sync span { color: var(--accent-ink); opacity: .8; }
+.bytes .crc { background: var(--blue); color: #fff; border-color: transparent; }
+.bytes .crc span { color: #fff; opacity: .8; }
+video, img.photo { max-width: 100%; border-radius: 12px; border: 1px solid var(--line); background: #000; }
+.media { display: grid; gap: 16px; grid-template-columns: minmax(0, 320px) 1fr; align-items: start; }
+@media (max-width: 720px) { .media { grid-template-columns: 1fr; } }
+footer { margin-top: 48px; padding: 28px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+ol li, ul li { margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>Husky701 <span>Dash</span></h1>
+    <p>An open-source digital dash for a 2023 Husqvarna 701. An ESP32 under the seat listens to the bike's CAN bus, then streams live telemetry to an ESP32 handlebar dash over RS-485 and to an Android phone over Bluetooth LE.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/DeepFocusAU/husky701-dash">View on GitHub</a>
+      <a class="btn ghost" href="#can-node">CAN node</a>
+      <a class="btn ghost" href="#wire-format">Wire format</a>
+    </div>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+  <a href="#system">System</a>
+  <a href="#can-node">CAN node</a>
+  <a href="#hardware">Hardware</a>
+  <a href="#wiring">Wiring</a>
+  <a href="#firmware">Firmware</a>
+  <a href="#signals">CAN signals</a>
+  <a href="#wire-format">Wire format</a>
+  <a href="#ble">Bluetooth</a>
+  <a href="#tools">Tools &amp; logs</a>
+  <a href="#bringup">Bring-up</a>
+  <a href="#dashes">Dashes</a>
+  <a href="#build">Build</a>
+</div></nav>
+
+<main class="wrap">
+
+<!-- ================================================================== -->
+<section id="system">
+  <h2><small>Overview</small>The whole system</h2>
+  <p class="lead">Three programs share one telemetry format. The node is the only part that touches the bike, and it can only listen.</p>
+
+  <div class="diagram" role="img" aria-label="Architecture: bike CAN bus to CAN node, which sends RS-485 to the ESP32 dash and Bluetooth LE to the Android dash">
+  <svg viewBox="0 0 980 430" xmlns="http://www.w3.org/2000/svg">
+    <!-- bike -->
+    <rect class="box" x="16" y="40" width="210" height="170" rx="12"/>
+    <text x="34" y="72" font-weight="800" font-size="16">2023 Husqvarna 701</text>
+    <text class="sub" x="34" y="96">ECU · ABS · switchgear</text>
+    <text class="sub" x="34" y="116">CAN 500 kbit/s, 11-bit IDs</text>
+    <text class="sub" x="34" y="136">Euro 5 (ISO 19689)</text>
+    <text class="sub" x="34" y="152">6-pin diagnostic connector</text>
+    <text class="sub" x="34" y="184">ACC2 switched 12 V</text>
+
+    <rect class="box" x="16" y="250" width="210" height="72" rx="12"/>
+    <text x="34" y="280" font-weight="700" font-size="14">5 V DC-DC buck</text>
+    <text class="sub" x="34" y="302">automotive, ≥ 2 A, ≥ 40 V in, fused</text>
+
+    <rect class="box" x="16" y="345" width="210" height="64" rx="12"/>
+    <text x="34" y="372" font-weight="700" font-size="14">Sensors</text>
+    <text class="sub" x="34" y="392">GPS NEO-6M · piezo switch</text>
+
+    <!-- node -->
+    <rect class="node" x="320" y="40" width="300" height="370" rx="14"/>
+    <text x="340" y="72" font-weight="800" font-size="17">CAN node</text>
+    <text class="sub" x="340" y="92">LilyGO T-CAN485 · ESP32 · under the seat</text>
+    <g font-size="13">
+      <rect class="box" x="340" y="108" width="260" height="34" rx="7"/><text x="352" y="130">TWAI listen-only + SN65HVD231</text>
+      <rect class="box" x="340" y="148" width="260" height="34" rx="7"/><text x="352" y="170">CanDecoder → TelemetryPayload</text>
+      <rect class="box" x="340" y="188" width="125" height="34" rx="7"/><text x="352" y="210">SD log (core 0)</text>
+      <rect class="box" x="475" y="188" width="125" height="34" rx="7"/><text x="487" y="210">GPS · clock</text>
+      <rect class="box" x="340" y="228" width="125" height="34" rx="7"/><text x="352" y="250">Battery ADC</text>
+      <rect class="box" x="475" y="228" width="125" height="34" rx="7"/><text x="487" y="250">Tap counter</text>
+      <rect class="box" x="340" y="268" width="260" height="34" rx="7"/><text x="352" y="290">Frame + CRC16 every 20 ms</text>
+      <rect class="box" x="340" y="308" width="125" height="34" rx="7"/><text x="352" y="330">MAX13487E</text>
+      <rect class="box" x="475" y="308" width="125" height="34" rx="7"/><text x="487" y="330">NimBLE GATT</text>
+      <rect class="box" x="340" y="348" width="260" height="34" rx="7"/><text x="352" y="370">USB sniffer · status LED</text>
+    </g>
+
+    <!-- dashes -->
+    <rect class="box" x="740" y="60" width="224" height="130" rx="12"/>
+    <text x="758" y="90" font-weight="800" font-size="16">ESP32 dash</text>
+    <text class="sub" x="758" y="112">LilyGO T-Display-S3</text>
+    <text class="sub" x="758" y="130">MAX3485 receiver</text>
+    <text class="sub" x="758" y="148">tacho · gear · fuel · trip</text>
+    <text class="sub" x="758" y="166">tyres · GPS · diagnostics</text>
+
+    <rect class="box" x="740" y="250" width="224" height="150" rx="12"/>
+    <text x="758" y="280" font-weight="800" font-size="16">Android dash</text>
+    <text class="sub" x="758" y="302">Samsung Note 10, Kotlin</text>
+    <text class="sub" x="758" y="320">tacho · fuel · trip · tyres</text>
+    <text class="sub" x="758" y="338">heading tape · waypoints</text>
+    <text class="sub" x="758" y="356">what3words · split screen</text>
+    <text class="sub" x="758" y="374">LIVE / SIM switch</text>
+
+    <!-- wires -->
+    <path class="wire can" d="M226 110 H320"/>
+    <text class="lbl" x="236" y="102" fill="currentColor">CAN-H / CAN-L</text>
+    <path class="wire" d="M120 210 V250"/>
+    <path class="wire" d="M226 286 H280 V230 H320"/>
+    <text class="lbl" x="236" y="278">5 V USB-C</text>
+    <path class="wire" d="M226 377 H300 V245 H320"/>
+
+    <path class="wire rs" d="M620 325 H680 V125 H740"/>
+    <text class="lbl" x="628" y="116">RS-485 115200 · 50 frames/s</text>
+    <path class="wire ble" d="M620 325 H700 V320 H740"/>
+    <text class="lbl" x="628" y="350">BLE notify · 25 frames/s</text>
+    <text class="lbl" x="628" y="368">mode write ← LIVE/SIM</text>
+  </svg>
+  </div>
+
+  <div class="grid" style="margin-top:16px">
+    <div class="card"><span class="tag">can-node/</span><h4>CAN node</h4><p>Listen-only CAN, decoder, RS-485 and BLE telemetry, SD logging of every frame, GPS time and position, battery sense, piezo taps.</p></div>
+    <div class="card"><span class="tag">esp32-dash/</span><h4>ESP32 dash</h4><p>T-Display-S3 dash driven by one piezo switch. Built-in scripted ride for testing without a bike.</p></div>
+    <div class="card"><span class="tag">android/</span><h4>Android dash</h4><p>Turns a Note 10 into a single-purpose dash. Touch pages, map split screen, TPMS caps, waypoints.</p></div>
+    <div class="card"><span class="tag">can-node/logs/</span><h4>Bike captures</h4><p>Raw CSV captures from the 701 on the stand, the evidence behind the signal table.</p></div>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<section id="can-node">
+  <h2><small>The heart of it</small>CAN node</h2>
+  <p class="lead">A LilyGO T-CAN485 under the seat. It reads the bike's CAN bus, decodes the signals the dashes need, and sends a 42-byte telemetry frame every 20 ms. It never transmits on the bike's bus.</p>
+
+  <div class="grid">
+    <div class="card"><h4>Listen-only, twice over</h4><p>The ESP32 TWAI controller runs in listen-only mode (no transmit, no ACK), and its TX signal is routed to spare pin IO25 while the transceiver's D pin is held recessive as a GPIO.</p></div>
+    <div class="card"><h4>Never stale</h4><p>Each signal times out: 300 ms for the 10–20 ms IDs, 1 s for 0x540. No frame of any ID for 500 ms clears the CAN OK flag.</p></div>
+    <div class="card"><h4>Records everything</h4><p>Every CAN frame goes to a FAT32 SD card in the background on the other core, about 1100 frames/s, roughly 120 MB per hour.</p></div>
+    <div class="card"><h4>Two links at once</h4><p>RS-485 to the ESP32 dash at 50 frames/s and BLE to the phone at 25 frames/s, byte for byte the same frame.</p></div>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<section id="hardware">
+  <h2><small>CAN node</small>Hardware</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Part</th><th>Detail</th></tr>
+    <tr><td>Board</td><td>LilyGO <b>T-CAN485</b>, CH9102F USB variant (LilyGO option Q331). ESP32, SN65HVD231 CAN transceiver, MAX13487E RS-485 transceiver, ME2107 boost, WS2812 LED, micro-SD slot. Windows may need the CH9102 driver.</td></tr>
+    <tr><td>Power</td><td>One automotive 5 V DC-DC buck for both boards: ≥ 2 A, input rating ≥ 40 V, fused, fed from switched <b>ACC2</b>. Feed each board through USB-C and leave the board's power terminal empty: LilyGO rates it 12 V max and a running bike sits above 14 V.</td></tr>
+    <tr><td>GPS</td><td>GY-GPS6MV2 (u-blox NEO-6M), 9600 baud, TX to IO35. Optional: sets the dash clock and adds NMEA lines to the SD log.</td></tr>
+    <tr><td>Battery sense</td><td>ACC2 → 100 kΩ → IO34 → 18 kΩ → GND, 100 nF across the 18 kΩ. 15 V reads 2.29 V at the pin. Calibrate with <code>VBAT_CAL</code>.</td></tr>
+    <tr><td>Piezo switch</td><td>Between IO32 and GND, internal pull-up. 3.3 V max: a +12 V switch output needs an optocoupler.</td></tr>
+    <tr><td>Toolchain</td><td>PlatformIO <code>espressif32@6.9.0</code> (Arduino-ESP32 2.0.17), <code>h2zero/NimBLE-Arduino@^1.4.3</code>.</td></tr>
+  </table></div>
+
+  <h3>Pin map</h3>
+  <div class="tablewrap"><table>
+    <tr><th class="mono">GPIO</th><th>Use</th><th>Notes</th></tr>
+    <tr><td class="mono">27</td><td>CAN TX → SN65HVD231 D</td><td>Held recessive as a plain GPIO</td></tr>
+    <tr><td class="mono">26</td><td>CAN RX ← SN65HVD231 R</td><td></td></tr>
+    <tr><td class="mono">23</td><td>SN65HVD231 Rs (SE)</td><td><b>Must stay LOW.</b> High means sleep with the receiver off, not listen-only</td></tr>
+    <tr><td class="mono">25</td><td>TWAI TX, parked</td><td>The controller's TX output lands here. Leave unconnected</td></tr>
+    <tr><td class="mono">22 / 21</td><td>RS-485 TX / RX</td><td>MAX13487E, auto-direction</td></tr>
+    <tr><td class="mono">17</td><td>MAX13487E /RE</td><td>HIGH: AutoDirection controls the receiver</td></tr>
+    <tr><td class="mono">19</td><td>MAX13487E /SHDN</td><td>HIGH: running</td></tr>
+    <tr><td class="mono">16</td><td>ME2107 boost enable</td><td>5 V for the MAX13487E</td></tr>
+    <tr><td class="mono">4</td><td>WS2812 status LED</td><td>Red / amber / green, flashes in SIM</td></tr>
+    <tr><td class="mono">2 / 15 / 14 / 13</td><td>SD MISO / MOSI / SCLK / CS</td><td>20 MHz SPI. GPIO2 is a boot pin: remove the card if an upload won't connect</td></tr>
+    <tr><td class="mono">35</td><td>GPS RX (from module TX)</td><td>Input-only pin</td></tr>
+    <tr><td class="mono">34</td><td>Battery sense ADC</td><td>Input-only pin, divider as above</td></tr>
+    <tr><td class="mono">32</td><td>Piezo tap switch</td><td>Pulses to GND</td></tr>
+  </table></div>
+</section>
+
+<!-- ================================================================== -->
+<section id="wiring">
+  <h2><small>CAN node</small>Wiring to the bike</h2>
+  <div class="media">
+    <img class="photo" src="assets/euro5-connector.png" alt="Euro 5 six-pin diagnostic connector pinout" loading="lazy">
+    <div>
+      <p>The 2023 701 has the Euro 5 (ISO 19689) 6-pin diagnostic connector under the seat. The CAN pins were confirmed with a meter on this bike: CAN-H 2.7 V and CAN-L 2.3 V with the key on. The older KTM 6-pin connector looks similar but is wired differently.</p>
+      <div class="tablewrap"><table>
+        <tr><th>Pin</th><th>Signal</th><th>Connect to</th></tr>
+        <tr><td>1</td><td>Not listed</td><td>Nothing</td></tr>
+        <tr><td>2</td><td>CAN-H</td><td>Node CAN terminal A</td></tr>
+        <tr><td>3</td><td>Ground</td><td>Node CAN GND, buck IN−</td></tr>
+        <tr><td>4</td><td>+12 V</td><td>Only if it reads 0 V with the key off, otherwise use ACC2. Never the CAN terminals</td></tr>
+        <tr><td>5</td><td>CAN-L</td><td>Node CAN terminal B</td></tr>
+        <tr><td>6</td><td>K-line</td><td>Nothing</td></tr>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="callout red"><b>Check for a third terminator.</b> The bike's bus is already terminated at both ends (about 60 Ω across H–L with the bike off). If the board reads about 120 Ω between its CAN A and B with nothing connected, remove that resistor first: a third terminator drops the bus to 40 Ω, on the bus the ABS and ECU share.</div>
+
+  <h3>Node to dash</h3>
+  <div class="tablewrap"><table>
+    <tr><th>From</th><th>To</th><th>Notes</th></tr>
+    <tr><td>Node RS-485 A / B</td><td>Dash MAX3485 A / B</td><td>Twisted pair plus GND. One-way: the node transmits, the dash listens</td></tr>
+    <tr><td>Bias at the dash</td><td>A → 3V3, B → GND</td><td>270–390 Ω each, to hold the idle bus above 0.2 V. kΩ values don't work: with 3.9 kΩ the MAX13487E never releases the line</td></tr>
+    <tr><td>Node USB-C, dash USB-C</td><td>5 V buck</td><td>Unplug the buck before connecting a laptop</td></tr>
+  </table></div>
+</section>
+
+<!-- ================================================================== -->
+<section id="firmware">
+  <h2><small>CAN node</small>Firmware architecture</h2>
+  <p class="lead">A single Arduino loop on core 1, with SD writes in their own FreeRTOS task on core 0 behind a 32 KB buffer, so a slow card never holds up CAN reception or the links.</p>
+
+<pre><code>loop()                                     every pass
+ ├─ simMode()        LIVE, or SIM if the phone asked (selftest build: always SIM)
+ ├─ can.read()       drain the TWAI queue ──▶ handleFrame()
+ │                     ├─ decoder.feed(id, dlc, data, now)
+ │                     ├─ sniffer.feed()        (USB tools)
+ │                     └─ sdLog.log()           (to the core-0 writer task)
+ ├─ selftestFeed()   SIM only: made-up frames through the same handleFrame()
+ ├─ gps.poll()       NMEA → time, position, speed, course, fix, sats, HDOP
+ ├─ taps             finished gesture ──▶ BLE Taps characteristic
+ ├─ every 20 ms      sendTelemetry()
+ │                     ├─ decoder.fill(payload, now)   (timeouts applied here)
+ │                     ├─ + vbat, GPS, seq, reserved = SIM flag
+ │                     ├─ frame = A5 5A payload crc16
+ │                     ├─ Serial2 ──▶ RS-485
+ │                     └─ every 2nd frame ──▶ BLE notify
+ ├─ handleCommands() USB serial: s r c o h
+ └─ every 1 s        updateLed()  R / A / G</code></pre>
+
+  <div class="tablewrap"><table>
+    <tr><th>Module</th><th>Role</th></tr>
+    <tr><td class="mono">can_bus.*</td><td>TWAI driver in listen-only mode at 500 kbit/s, transceiver held silent, counters for frames, missed (queue full), overruns (hardware FIFO) and bus errors.</td></tr>
+    <tr><td class="mono">can_decode.*</td><td>Pure logic, no hardware calls: turns frames into a <code>TelemetryPayload</code>, tracks when each ID was last seen, applies the timeouts. Unit-testable on a PC.</td></tr>
+    <tr><td class="mono">sdlog.*</td><td>FAT32 logger. New <code>LOGnnnnn.CSV</code> per power-on, flushed every 2 s, drops and counts lines rather than stalling.</td></tr>
+    <tr><td class="mono">gps.*</td><td>NEO-6M parser. Local time from <code>GPS_TIME_ZONE</code> (POSIX TZ, with daylight saving), date, position, speed, course, height, HDOP. Raw <code>$GPRMC</code> lines go to the SD log.</td></tr>
+    <tr><td class="mono">ble_link.*</td><td>NimBLE GATT server: Frame, Taps and Mode characteristics. Mode reverts to LIVE on disconnect.</td></tr>
+    <tr><td class="mono">taps.*</td><td>Piezo gesture counter, same timing as the ESP32 dash: 40 ms quiet before a new pulse, gesture ends 450 ms after the last pulse, up to 4 taps.</td></tr>
+    <tr><td class="mono">sniffer.*</td><td>USB serial tools for reverse engineering: ID table with rates, log all frames, or only frames that changed.</td></tr>
+    <tr><td class="mono">selftest.*</td><td>Made-up 20 s sweep of rpm, gears, coolant and throttle, fed through the real decoder.</td></tr>
+    <tr><td class="mono">main.cpp</td><td>Wiring it together: setup, loop, battery ADC (8 samples per frame), frame building, LED state, serial commands.</td></tr>
+  </table></div>
+
+  <h3>Builds</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Env</th><th>What it does</th><th>Needs</th></tr>
+    <tr><td class="mono">node</td><td>The real firmware. Powers up LIVE; the phone can switch it to SIM over BLE</td><td>The bike</td></tr>
+    <tr><td class="mono">selftest</td><td>Always SIM. CAN controller not started. Battery fixed at 13.8 V</td><td>Node and dash on the bench</td></tr>
+  </table></div>
+
+  <h3>Status LED</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Colour</th><th>Meaning</th></tr>
+    <tr><td class="bad">Red</td><td>No bike data: no CAN traffic for 500 ms, or the CAN controller isn't running</td></tr>
+    <tr><td class="warn">Amber</td><td>Running with a problem: one of the five IDs missing, no battery reading, SD not logging, or CAN errors or lost frames in the last second</td></tr>
+    <tr><td class="ok">Green</td><td>All five IDs arriving, battery reading present, SD logging, no new errors</td></tr>
+    <tr><td>Flashing</td><td>SIM data (selftest build, or SIM requested by the phone), so made-up data can't be mistaken for real</td></tr>
+  </table></div>
+</section>
+
+<!-- ================================================================== -->
+<section id="signals">
+  <h2><small>CAN node</small>Decoded CAN signals</h2>
+  <p class="lead">From captures on this 2023 701, on the stand. It differs from the 2020 KTM 690 Enduro R documented in <a href="https://github.com/blalor/ktm-can">blalor/ktm-can</a> and <a href="https://github.com/ChickenPoptart/KTMComputer">KTMComputer</a>: there's no 0x12B, and the 0x540 bytes sit one position earlier. 500 kbit/s, 11-bit IDs.</p>
+  <div class="tablewrap"><table>
+    <tr><th class="mono">ID</th><th>Every</th><th>Bytes</th><th>Signal</th><th>Status</th></tr>
+    <tr><td class="mono">0x120</td><td>20 ms</td><td class="mono">D0–D1 BE</td><td>rpm</td><td class="ok">Confirmed</td></tr>
+    <tr><td></td><td></td><td class="mono">D2</td><td>throttle, 0–255</td><td class="ok">Confirmed</td></tr>
+    <tr><td></td><td></td><td class="mono">D3 bit 3</td><td>kill switch, 1 = run</td><td class="ok">Fits both captures</td></tr>
+    <tr><td></td><td></td><td class="mono">D3 bit 4</td><td>starter button</td><td>Fits the start, not used</td></tr>
+    <tr><td></td><td></td><td class="mono">D4 bit 0</td><td>throttle map</td><td class="ok">Confirmed</td></tr>
+    <tr><td class="mono">0x128</td><td>20 ms</td><td class="mono">D2 bit 0</td><td>0 = throttle open</td><td class="ok">Confirmed</td></tr>
+    <tr><td class="mono">0x129</td><td>20 ms</td><td class="mono">D0 high nibble</td><td>gear, 0 = neutral, 1–6</td><td class="ok">Confirmed (N, 1–4 seen)</td></tr>
+    <tr><td></td><td></td><td class="mono">D0 bit 3</td><td>clutch in</td><td class="ok">Confirmed</td></tr>
+    <tr><td class="mono">0x12D</td><td>10 ms</td><td class="mono">D0–D1 BE</td><td>front wheel speed, raw</td><td class="warn">Confirmed, scale not set (needs a GPS ride)</td></tr>
+    <tr><td></td><td></td><td class="mono">D2–D3 BE</td><td>rear wheel speed, raw</td><td class="warn">Unconfirmed</td></tr>
+    <tr><td class="mono">0x540</td><td>100 ms</td><td class="mono">D3 bit 0</td><td>side stand, 1 = up</td><td class="warn">Untestable here (switch bypassed)</td></tr>
+    <tr><td></td><td></td><td class="mono">D3 bit 4</td><td>engine not running</td><td>Fits the start, not used</td></tr>
+    <tr><td></td><td></td><td class="mono">D5–D6 BE</td><td>coolant, 0.1 °C</td><td class="ok">Confirmed (23.5 → 54.6 °C)</td></tr>
+  </table></div>
+  <p><b>Seen but not decoded yet:</b> 0x4C1 D0 is the handlebar buttons (bit 0 map, bit 1 traction control, set while held). 0x12A D1 changed from 2D to 1D when traction control was switched, possibly its on/off state. 0x174 / 0x178 / 0x17C look like IMU data (offset 16-bit values, a counter in D6, a checksum in D7). The bike clock is not on this bus, so the dash clock comes from GPS.</p>
+  <p><b>Key-off:</b> the last module awake repeats its final 0x120 frame very quickly for about a second, because nothing is left to acknowledge it. The node never ACKs by design, so the repeats show in the logs and are normal.</p>
+</section>
+
+<!-- ================================================================== -->
+<section id="wire-format">
+  <h2><small>Shared contract</small>Telemetry wire format</h2>
+  <p class="lead"><code>include/telemetry_packet.h</code>, identical in the node and the ESP32 dash, version 5. The Android app parses the same bytes. All multi-byte fields are little-endian. CRC-16/CCITT-FALSE (poly 0x1021, init 0xFFFF) over the payload only.</p>
+
+  <div class="bytes" aria-label="Frame layout">
+    <div class="sync">A5<span>sync</span></div><div class="sync">5A<span>sync</span></div>
+    <div>ver<span>0</span></div><div>seq<span>1</span></div><div>rpm<span>2–3</span></div><div>gear<span>4</span></div><div>thr<span>5</span></div><div>cool<span>6–7</span></div><div>whlF<span>8–9</span></div><div>whlR<span>10–11</span></div><div>vbat<span>12–13</span></div><div>flags<span>14</span></div><div>res<span>15</span></div><div>hh<span>16</span></div><div>mm<span>17</span></div><div>lat<span>18–21</span></div><div>lon<span>22–25</span></div><div>spd<span>26–27</span></div><div>crs<span>28–29</span></div><div>sats<span>30</span></div><div>fix<span>31</span></div><div>day<span>32–33</span></div><div>alt<span>34–35</span></div><div>hdop<span>36</span></div><div>rsv<span>37</span></div>
+    <div class="crc">lo<span>crc</span></div><div class="crc">hi<span>crc</span></div>
+  </div>
+  <p class="lead" style="font-size:.9rem">38-byte payload, 42-byte frame. Offsets are within the payload.</p>
+
+  <div class="tablewrap"><table>
+    <tr><th class="mono">Offset</th><th>Field</th><th>Type</th><th>Meaning</th></tr>
+    <tr><td class="mono">0</td><td>version</td><td>u8</td><td>5</td></tr>
+    <tr><td class="mono">1</td><td>seq</td><td>u8</td><td>Increments every frame, for drop counting</td></tr>
+    <tr><td class="mono">2</td><td>rpm</td><td>u16</td><td>Engine rpm</td></tr>
+    <tr><td class="mono">4</td><td>gear</td><td>u8</td><td>0 = neutral, 1–6, 0xFF unknown</td></tr>
+    <tr><td class="mono">5</td><td>throttle</td><td>u8</td><td>0–255 raw</td></tr>
+    <tr><td class="mono">6</td><td>coolant_dC</td><td>i16</td><td>0.1 °C, −32768 = not received</td></tr>
+    <tr><td class="mono">8</td><td>wheel_front</td><td>u16</td><td>Raw count, scaled to km/h in the dash</td></tr>
+    <tr><td class="mono">10</td><td>wheel_rear</td><td>u16</td><td>Raw count</td></tr>
+    <tr><td class="mono">12</td><td>vbat_mV</td><td>u16</td><td>Battery in mV, 0 = not measured</td></tr>
+    <tr><td class="mono">14</td><td>flags</td><td>u8</td><td>bit0 clutch in · bit1 kill = run · bit2 stand up · bit3 map 2 · bit4 throttle open · bit7 CAN OK</td></tr>
+    <tr><td class="mono">15</td><td>reserved</td><td>u8</td><td>bit0 = node is sending SIM data</td></tr>
+    <tr><td class="mono">16</td><td>clock_hour / min</td><td>u8, u8</td><td>Local time from GPS, 0xFF unknown</td></tr>
+    <tr><td class="mono">18</td><td>gps_lat_e7 / lon_e7</td><td>i32, i32</td><td>Degrees × 10⁷, north and east positive</td></tr>
+    <tr><td class="mono">26</td><td>gps_speed_dkmh</td><td>u16</td><td>0.1 km/h</td></tr>
+    <tr><td class="mono">28</td><td>gps_course_dd</td><td>u16</td><td>0.1°, 0 = north</td></tr>
+    <tr><td class="mono">30</td><td>gps_sats / gps_fix</td><td>u8, u8</td><td>Satellites in use; 1 = position valid</td></tr>
+    <tr><td class="mono">32</td><td>gps_day</td><td>u16</td><td>Local date, days since 2000-01-01</td></tr>
+    <tr><td class="mono">34</td><td>gps_alt_m</td><td>i16</td><td>Metres above sea level</td></tr>
+    <tr><td class="mono">36</td><td>gps_hdop_dx10</td><td>u8</td><td>HDOP × 10</td></tr>
+    <tr><td class="mono">37</td><td>gps_reserved</td><td>u8</td><td>0</td></tr>
+  </table></div>
+
+<pre><code>// CRC-16/CCITT-FALSE, as in telemetry_packet.h
+uint16_t crc = 0xFFFF;
+for (size_t i = 0; i &lt; len; i++) {
+    crc ^= (uint16_t)data[i] &lt;&lt; 8;
+    for (int b = 0; b &lt; 8; b++)
+        crc = (crc &amp; 0x8000) ? (crc &lt;&lt; 1) ^ 0x1021 : crc &lt;&lt; 1;
+}</code></pre>
+</section>
+
+<!-- ================================================================== -->
+<section id="ble">
+  <h2><small>CAN node ↔ phone</small>Bluetooth LE</h2>
+  <p class="lead">The node advertises as <code>Husky701</code>. The phone finds it and reconnects by itself after key-off. RS-485 keeps running alongside.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Characteristic</th><th>UUID</th><th>Props</th><th>Content</th></tr>
+    <tr><td>Service</td><td class="mono">7a1e0001-4b8f-4c1e-9a70-701d45a00001</td><td></td><td></td></tr>
+    <tr><td>Frame</td><td class="mono">7a1e0002-…</td><td>notify</td><td>One whole 42-byte wire frame, every 2nd RS-485 frame (25/s). Needs MTU ≥ 45; the app asks for 247</td></tr>
+    <tr><td>Taps</td><td class="mono">7a1e0003-…</td><td>notify, read</td><td><code>[gesture seq][tap count]</code>; seq steps on every gesture so repeats are seen</td></tr>
+    <tr><td>Mode</td><td class="mono">7a1e0004-…</td><td>write, read</td><td><code>1</code> = SIM, <code>0</code> = LIVE. Back to LIVE on disconnect and at power-up</td></tr>
+  </table></div>
+  <p>When the phone selects SIM on its Diagnostics page, the node ignores the bike and sends the selftest sweep on both links, sets <code>reserved</code> bit 0 and flashes its LED. The phone drops any frame flagged SIM while it is in LIVE, so made-up data can't show as real.</p>
+</section>
+
+<!-- ================================================================== -->
+<section id="tools">
+  <h2><small>CAN node</small>Serial tools and logs</h2>
+  <p>USB monitor at <b>921600</b>, one letter per command:</p>
+  <div class="tablewrap"><table>
+    <tr><th>Key</th><th>Does</th></tr>
+    <tr><td class="mono">s</td><td>Status line plus a table of every ID seen, with rate and latest bytes</td></tr>
+    <tr><td class="mono">r</td><td>Log every frame: <code>millis ID length bytes…</code></td></tr>
+    <tr><td class="mono">c</td><td>Log only frames whose bytes changed (best for finding a signal)</td></tr>
+    <tr><td class="mono">o</td><td>Logging off</td></tr>
+    <tr><td class="mono">h</td><td>RS-485 line test: 3 s low, 3 s released, for 60 s. Bench only</td></tr>
+  </table></div>
+  <p>SD log format, one file per power-on, plus GPS NMEA lines when a module is fitted:</p>
+<pre><code>ms,id,len,data
+30433,4C1,8,0000000000000000
+1234,GPS,$GPRMC,...</code></pre>
+  <p>The captures in <a href="https://github.com/DeepFocusAU/husky701-dash/tree/main/can-node/logs"><code>can-node/logs/</code></a> come from the 701 on the stand: key-on, start, warm-up, gear and clutch work, map and traction-control buttons. <code>LOG00014.CSV</code> and <code>LOG00017.CSV</code> are the main ones.</p>
+</section>
+
+<!-- ================================================================== -->
+<section id="bringup">
+  <h2><small>CAN node</small>Bring-up order</h2>
+  <ol>
+    <li><b>Bench, link only.</b> Upload <code>selftest</code>, connect RS-485 to the dash running its <code>live</code> build. LED flashes green; the dash sweeps rpm, gears and coolant over 20 s at 13.8 V with no CRC errors climbing.</li>
+    <li><b>Bike, key on, engine off.</b> Do the terminator and pin checks, upload <code>node</code>, connect. The LED goes from red to green. Press <code>s</code>.</li>
+    <li><b>Check the IDs.</b> 0x120, 0x128, 0x129, 0x12D and 0x540 at the rates above; <code>buserr</code> still; <code>missed</code> and <code>overrun</code> at 0. If <code>buserr</code> climbs and nothing arrives, swap H and L.</li>
+    <li><b>Check each signal</b> against the table by working the controls with the monitor open.</li>
+    <li><b>Calibrate battery:</b> compare <code>vbat=</code> with a multimeter and set <code>VBAT_CAL</code> = meter ÷ reading.</li>
+  </ol>
+</section>
+
+<!-- ================================================================== -->
+<section id="dashes">
+  <h2><small>Displays</small>The two dashes</h2>
+  <div class="media">
+    <video src="assets/android-dash-sim.mp4" controls muted playsinline preload="metadata" aria-label="30 second recording of the Android dash running simulated data"></video>
+    <div>
+      <h3 style="margin-top:0">Android dash (Samsung Note 10)</h3>
+      <p>Pages: Main, Fuel, Trip, Tyres, Map, Diagnostics (swipe to move, swipe down for a map app with a tacho strip).</p>
+      <ul>
+        <li>Vertical tacho with peak hold and shift lights; gear; coolant, fuel and battery bars; throttle (toggle on Diagnostics); GPS speed.</li>
+        <li>Fuel model with learned factor, full and partial fill-ups (negative for fuel taken out), range warnings at 10 % and 5 %.</li>
+        <li>Map: dive-computer heading tape, degrees and decimal minutes, trail, waypoints with names, navigate-to, what3words on demand.</li>
+        <li>BLE TPMS caps (FOBO Bike 2 and others), split screen with Google Maps or Gaia, appliance (kiosk) mode.</li>
+      </ul>
+      <h3>ESP32 dash (LilyGO T-Display-S3)</h3>
+      <ul>
+        <li>Tacho bar with shift light, large gear, coolant and battery with colour warnings.</li>
+        <li>Fuel, trip, tyres, GPS, night dimming, clock and diagnostics pages, all driven by one piezo switch (tap counts).</li>
+        <li><code>sim</code> build runs a scripted ~70 s ride through the real parser, with deliberate CRC errors and drops.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<section id="build">
+  <h2><small>Get started</small>Build it</h2>
+<pre><code># CAN node
+cd can-node
+pio run -e selftest -t upload     # bench, no bike
+pio run -e node -t upload         # real firmware
+pio device monitor -b 921600
+
+# ESP32 dash
+cd esp32-dash
+pio run -e sim -t upload          # scripted ride
+pio run -e live -t upload         # frames from the node
+
+# Android dash (JDK 17)
+cd android
+./gradlew testDebugUnitTest assembleDebug</code></pre>
+  <p>Optional what3words: add <code>w3w.apiKey=your-key</code> to <code>android/local.properties</code>, which is never committed.</p>
+  <div class="callout"><b>Safety.</b> A hobby project for off-road and test use, not a certified instrument. Power everything from fused, switched ACC2, check for the extra terminator before connecting to the bike, and keep the node listen-only.</div>
+</section>
+
+</main>
+
+<footer><div class="wrap">
+  MIT licensed · <a href="https://github.com/DeepFocusAU/husky701-dash">github.com/DeepFocusAU/husky701-dash</a> · Not affiliated with Husqvarna Motorcycles or KTM.
+</div></footer>
+</body>
+</html>
