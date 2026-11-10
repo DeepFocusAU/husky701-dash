@@ -166,34 +166,33 @@ ol li, ul li { margin: 4px 0; }
     </g>
 
     <!-- dashes -->
-    <rect class="box" x="740" y="60" width="224" height="130" rx="12"/>
-    <text x="758" y="90" font-weight="800" font-size="16">ESP32 dash</text>
-    <text class="sub" x="758" y="112">LilyGO T-Display-S3</text>
-    <text class="sub" x="758" y="130">MAX3485 receiver</text>
-    <text class="sub" x="758" y="148">tacho · gear · fuel · trip</text>
-    <text class="sub" x="758" y="166">tyres · GPS · diagnostics</text>
+    <rect class="box" x="740" y="40" width="224" height="160" rx="12"/>
+    <text x="758" y="70" font-weight="800" font-size="16">ESP32 dash</text>
+    <text class="lbl" x="758" y="92" fill="var(--blue)" style="fill:var(--blue)">RS-485 · 115200 · 50 frames/s</text>
+    <text class="sub" x="758" y="116">LilyGO T-Display-S3</text>
+    <text class="sub" x="758" y="134">MAX3485 receiver</text>
+    <text class="sub" x="758" y="152">tacho · gear · fuel · trip</text>
+    <text class="sub" x="758" y="170">tyres · GPS · diagnostics</text>
 
-    <rect class="box" x="740" y="250" width="224" height="150" rx="12"/>
-    <text x="758" y="280" font-weight="800" font-size="16">Android dash</text>
-    <text class="sub" x="758" y="302">Samsung Note 10, Kotlin</text>
-    <text class="sub" x="758" y="320">tacho · fuel · trip · tyres</text>
-    <text class="sub" x="758" y="338">heading tape · waypoints</text>
-    <text class="sub" x="758" y="356">what3words · split screen</text>
-    <text class="sub" x="758" y="374">LIVE / SIM switch</text>
+    <rect class="box" x="740" y="230" width="224" height="180" rx="12"/>
+    <text x="758" y="260" font-weight="800" font-size="16">Android dash</text>
+    <text class="lbl" x="758" y="282" style="fill:var(--accent)">BLE notify · 25 frames/s</text>
+    <text class="lbl" x="758" y="298" style="fill:var(--accent)">mode write ← LIVE / SIM</text>
+    <text class="sub" x="758" y="322">Samsung Note 10, Kotlin</text>
+    <text class="sub" x="758" y="340">tacho · fuel · trip · tyres</text>
+    <text class="sub" x="758" y="358">heading tape · waypoints</text>
+    <text class="sub" x="758" y="376">what3words · split screen</text>
 
     <!-- wires -->
-    <path class="wire can" d="M226 110 H320"/>
-    <text class="lbl" x="236" y="102" fill="currentColor">CAN-H / CAN-L</text>
+    <path class="wire can" d="M226 120 H320"/>
+    <text class="lbl" x="236" y="112">CAN-H / L</text>
     <path class="wire" d="M120 210 V250"/>
-    <path class="wire" d="M226 286 H280 V230 H320"/>
-    <text class="lbl" x="236" y="278">5 V USB-C</text>
-    <path class="wire" d="M226 377 H300 V245 H320"/>
+    <path class="wire" d="M226 286 H296 V232 H320"/>
+    <text class="lbl" x="232" y="278">5 V USB-C</text>
+    <path class="wire" d="M226 377 H306 V250 H320"/>
 
-    <path class="wire rs" d="M620 325 H680 V125 H740"/>
-    <text class="lbl" x="628" y="116">RS-485 115200 · 50 frames/s</text>
-    <path class="wire ble" d="M620 325 H700 V320 H740"/>
-    <text class="lbl" x="628" y="350">BLE notify · 25 frames/s</text>
-    <text class="lbl" x="628" y="368">mode write ← LIVE/SIM</text>
+    <path class="wire rs" d="M620 318 H676 V125 H740"/>
+    <path class="wire ble" d="M620 334 H700 V325 H740"/>
   </svg>
   </div>
 
