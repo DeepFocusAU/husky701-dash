@@ -66,7 +66,19 @@
 #define BLE_FRAME_UUID     "7a1e0002-4b8f-4c1e-9a70-701d45a00001"
 #define BLE_TAPS_UUID      "7a1e0003-4b8f-4c1e-9a70-701d45a00001"
 #define BLE_MODE_UUID      "7a1e0004-4b8f-4c1e-9a70-701d45a00001"   // phone writes 1 = SIM, 0 = LIVE
+#define BLE_OTA_UUID       "7a1e0005-4b8f-4c1e-9a70-701d45a00001"   // update mode, see wifi_ota.h
 #define BLE_FRAME_DIV      2        // send every 2nd RS-485 frame: 25 frames/s to the phone
+
+// ---------------- Over-the-air updates (wifi_ota.h) ---------
+// The phone sends its hotspot details over BLE; VS Code uploads with `pio run -e node_ota -t upload`.
+// OTA_PASSWORD comes from secrets.ini (untracked, see secrets.example.ini). Without it, update
+// mode is refused.
+#ifndef OTA_PASSWORD
+#define OTA_PASSWORD       ""
+#endif
+#define OTA_HOSTNAME       "husky701-node"  // reached as husky701-node.local
+#define OTA_CONNECT_MS     30000    // give up joining the hotspot after this
+#define OTA_IDLE_MS        600000   // update mode ends after 10 min with no upload
 
 // ---------------- Piezo switch (for the Android dash) -------
 // Pulses the pin to GND, same as on the ESP32 dash. IO32 is a free header pin

@@ -6,7 +6,14 @@ static NimBLEServer         *server  = nullptr;
 static NimBLECharacteristic *frameCh = nullptr;
 static NimBLECharacteristic *tapsCh  = nullptr;
 static NimBLECharacteristic *modeCh  = nullptr;
+static NimBLECharacteristic *otaCh   = nullptr;
 static volatile bool simWanted = false;
+
+// Written by the BLE task, taken by loop(). The lock keeps the strings whole.
+static portMUX_TYPE otaLock = portMUX_INITIALIZER_UNLOCKED;
+static bool        otaPending = false;
+static uint8_t     otaCmd = 0;
+static std::string otaSsid, otaPass;
 
 namespace {
 class ServerCallbacks : public NimBLEServerCallbacks {
@@ -30,6 +37,55 @@ class ModeCallbacks : public NimBLECharacteristicCallbacks {
         simWanted = !v.empty() && v[0] == 1;
     }
 };
+
+// [1][ssid len][ssid][pass len][pass] = start, [0] = stop. Anything malformed is ignored.
+class OtaCallbacks : public NimBLECharacteristicCallbacks {
+    void onWrite(NimBLECharacteristic *ch) override {
+        const std::string v = ch->getValue();
+        if (v.empty()) return;
+        std::string ssid, pass;
+        if (v[0] == 1) {
+            if (v.size() < 2) return;
+            const size_t sl = (uint8_t)v[1];
+            if (sl < 1 || sl > 32 || v.size() < 3 + sl) return;
+            const size_t pl = (uint8_t)v[2 + sl];
+            if (pl > 63 || v.size() != 3 + sl + pl) return;
+            ssid = v.substr(2, sl);
+            pass = v.substr(3 + sl, pl);
+        } else if (v[0] != 0) {
+            return;
+        }
+        portENTER_CRITICAL(&otaLock);
+        otaCmd = (uint8_t)v[0];
+        otaSsid.swap(ssid);
+        otaPass.swap(pass);
+        otaPending = true;
+        portEXIT_CRITICAL(&otaLock);
+        // don't leave the password readable on the characteristic
+        ch->setValue("received");
+    }
+};
+}
+
+bool BleLink::takeOtaCommand(uint8_t &cmd, String &ssid, String &pass) {
+    std::string s, p;
+    portENTER_CRITICAL(&otaLock);
+    const bool had = otaPending;
+    otaPending = false;
+    cmd = otaCmd;
+    s.swap(otaSsid);
+    p.swap(otaPass);
+    portEXIT_CRITICAL(&otaLock);
+    if (!had) return false;
+    ssid = s.c_str();
+    pass = p.c_str();
+    return true;
+}
+
+void BleLink::setOtaStatus(const String &status) {
+    if (!otaCh) return;
+    otaCh->setValue(status.c_str());
+    if (connected()) otaCh->notify();
 }
 
 void BleLink::begin() {
@@ -50,6 +106,13 @@ void BleLink::begin() {
     const uint8_t live = 0;
     modeCh->setValue(&live, 1);
     modeCh->setCallbacks(new ModeCallbacks());
+    // Encrypted write: the phone pairs ("just works", no PIN) before the hotspot password is sent.
+    NimBLEDevice::setSecurityAuth(true, false, true);   // bond, no MITM, secure connections
+    NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
+    otaCh = svc->createCharacteristic(BLE_OTA_UUID,
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_ENC);
+    otaCh->setValue("off");
+    otaCh->setCallbacks(new OtaCallbacks());
     svc->start();
 
     NimBLEAdvertising *adv = NimBLEDevice::getAdvertising();

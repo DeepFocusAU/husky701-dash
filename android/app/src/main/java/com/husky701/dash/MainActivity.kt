@@ -41,6 +41,15 @@ class MainActivity : Activity(), Dash.Platform {
         get() = prefs.getBoolean("showThrottle", true)
         set(v) { prefs.edit().putBoolean("showThrottle", v).apply() }
 
+    // App-private storage, on a phone that's a dedicated dash.
+    override var hotspotSsid: String
+        get() = prefs.getString("hotspotSsid", "")!!
+        set(v) { prefs.edit().putString("hotspotSsid", v).apply() }
+
+    override var hotspotPass: String
+        get() = prefs.getString("hotspotPass", "")!!
+        set(v) { prefs.edit().putString("hotspotPass", v).apply() }
+
     override var brightnessIndex: Int
         get() = prefs.getInt("brightness", DashConfig.BRIGHTNESS_DEFAULT).coerceIn(0, DashConfig.BRIGHTNESS_LEVELS.size - 1)
         set(v) { prefs.edit().putInt("brightness", v).apply() }
@@ -114,6 +123,7 @@ class MainActivity : Activity(), Dash.Platform {
         dash.w3w = What3Words(BuildConfig.W3W_API_KEY, Store(getSharedPreferences("w3w", MODE_PRIVATE)),
             { android.os.SystemClock.elapsedRealtime() }, { java.time.LocalDate.now().toEpochDay() })
         dash.askText = { title, initial, done -> askText(title, initial, done) }
+        dash.askHotspot = { ssid, pass, done -> askHotspot(ssid, pass, done) }
         view = DashView(this, dash)
         setContentView(view)
 
@@ -260,5 +270,52 @@ class MainActivity : Activity(), Dash.Platform {
         dlg.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
         dlg.show()
         input.requestFocus()
+    }
+
+    /** The phone hotspot's name and password, for CAN node updates (Settings > Connections > Mobile Hotspot). */
+    private fun askHotspot(ssid: String, pass: String, done: (Pair<String, String>?) -> Unit) {
+        var answer: Pair<String, String>? = null
+        fun field(value: String, hint: String, max: Int, password: Boolean) = android.widget.EditText(this).apply {
+            setText(value)
+            isSingleLine = true
+            this.hint = hint
+            textSize = 22f
+            filters = arrayOf(android.text.InputFilter.LengthFilter(max))
+            if (password) inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        val name = field(ssid, "Hotspot name", NodeOta.SSID_MAX, false)
+        val word = field(pass, "Hotspot password", NodeOta.PASS_MAX, true)
+        val show = android.widget.CheckBox(this).apply {
+            text = "Show password"
+            setOnCheckedChangeListener { _, on ->
+                word.inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                    (if (on) android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD else android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD)
+                word.setSelection(word.text.length)
+            }
+        }
+        val pad = (20 * resources.displayMetrics.density).toInt()
+        val box = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(pad, pad / 2, pad, 0)
+            addView(name); addView(word); addView(show)
+        }
+        val dlg = android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Phone hotspot for node updates")
+            .setView(box)
+            .setPositiveButton("SAVE") { _, _ -> answer = name.text.toString() to word.text.toString() }
+            .setNegativeButton("CANCEL", null)
+            .create()
+        val overOverlay = SplitScreen.showing && android.provider.Settings.canDrawOverlays(this)
+        if (overOverlay) {
+            dlg.window?.setType(android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+            SplitScreen.yieldFocus(this, true)
+        }
+        dlg.setOnDismissListener {
+            if (overOverlay) SplitScreen.yieldFocus(this, false)
+            done(answer)
+        }
+        dlg.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+        dlg.show()
+        name.requestFocus()
     }
 }

@@ -12,6 +12,7 @@ Board: **T-CAN485 with CH9102F USB** (LilyGO option Q331). Windows may need the 
 |-----|--------------|-------|
 | `node` (default) | The real firmware | The bike |
 | `selftest` | Feeds made-up CAN frames through the real decoder and sends the result to the dash. CAN controller not started | Node and dash on the bench |
+| `node_ota` | The `node` firmware, uploaded over Wi-Fi (see [Over-the-air updates](#over-the-air-updates)) | Node in update mode, computer on the phone hotspot |
 
 ## Before connecting to the bike
 
@@ -159,6 +160,32 @@ Sets the dash clock and records position and speed in the SD log, at 1 update pe
 - **SD log:** GPS lines look like `1234,GPS,$GPRMC,...`, in with the CAN frames, using the standard NMEA sentence.
 - **Status:** press `s` for `# GPS no data`, `searching` or `fix`, with the satellite count.
 
+## Over-the-air updates
+
+After one USB upload, the node can be updated over Wi-Fi, through the Samsung's hotspot. Wi-Fi is off the rest of the time.
+
+**One-time setup**
+1. Copy `secrets.example.ini` to `secrets.ini` and set a long `ota_password`. `secrets.ini` is gitignored. A firmware built without it refuses update mode.
+2. Upload `node` over USB once. This build changes the partition table to `min_spiffs.csv` (two 1.9 MB app slots), which OTA can't do by itself.
+3. On the phone, hold **NODE UPDATE** on Diagnostics and enter the hotspot name and password (Settings > Connections > Mobile Hotspot). The app keeps them.
+4. Windows: allow inbound TCP port 32323 for the PlatformIO Python (or for that port), because the node connects back to the computer during an upload:
+   ```powershell
+   New-NetFirewallRule -DisplayName "ESP32 OTA" -Direction Inbound -Protocol TCP -LocalPort 32323 -Action Allow -Profile Private,Public
+   ```
+
+**Each update**
+1. Engine off, key on. Turn on the phone's hotspot.
+2. Tap **NODE UPDATE**. The first time, Android pairs with the node (no PIN). The `update` line on Diagnostics goes `connecting to …`, then `ready 192.168.x.x`.
+3. Join the laptop to the same hotspot and run `pio run -e node_ota -t upload` in `can-node`. If `husky701-node.local` doesn't resolve, add `--upload-port 192.168.x.x` with the IP from the app.
+4. The status shows `updating NN%`, then `done, restarting`. The node reboots on the new firmware and the phone reconnects.
+
+**Safety rules in the firmware**
+- Refused while the engine runs (rpm > 0 in LIVE). If the engine starts during update mode, Wi-Fi switches off.
+- Update mode ends after 10 minutes without an upload, on STOP UPDATE, or on any failure.
+- The hotspot details are sent over an encrypted BLE link and are never saved on the node (`WiFi.persistent(false)`).
+- An upload must know the OTA password, and is MD5-checked before the node switches to it. An interrupted upload leaves the old firmware running, and USB always works as a fallback.
+- The status line shows `# UPDATE …` while it's on, and every change is printed as `# update: …`.
+
 ## Settings
 
 All in `include/config.h`: pins, link rate, signal timeouts, and the battery divider with `VBAT_CAL`. To calibrate, compare `vbat=` in the status line with a multimeter at the battery and set `VBAT_CAL` to multimeter ÷ reading.
@@ -177,6 +204,7 @@ The node also sends telemetry over Bluetooth LE to the Android dash (`android/`,
 - It sends every 2nd frame (25 per second), byte for byte the same as on RS-485 (`BLE_FRAME_DIV`).
 - The status line shows `# BLE PHONE CONNECTED sent=… mode=LIVE` or `# BLE advertising`.
 - **LIVE / SIM from the phone:** the phone's Diagnostics LIVE | SIM switch writes the Mode characteristic (1 = SIM, 0 = LIVE). In SIM the `node` build ignores the bike and sends the same made-up sweep as `selftest` (13.8 V, LED flashing), on RS-485 too, so the ESP32 dash shows it as well. Bit 0 of the frame's `reserved` byte is set while it does. It always powers up LIVE, and goes back to LIVE as soon as the phone disconnects, so it can't be left on made-up data. `# mode: SIM` / `# mode: LIVE` is printed on each change.
+- **Update mode:** the Ota characteristic starts the Wi-Fi update mode, see [Over-the-air updates](#over-the-air-updates).
 - To turn it off, set `BLE_ENABLE 0` in `include/config.h`. The UUIDs are there too, and must match `DashConfig.kt` in the Android project.
 
 **Piezo switch for the phone:** wire the switch between **IO32** and GND (`PIN_TAP_SWITCH`). The node counts the taps with the same timing as the ESP32 dash and sends each finished gesture to the phone. IO32 takes 3.3 V at most, so a switch that outputs +12 V needs an optocoupler. Check that IO32 is free on your header before wiring it.

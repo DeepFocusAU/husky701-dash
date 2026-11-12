@@ -159,7 +159,8 @@ class DashView(context: Context, private val dash: Dash) : View(context) {
 
     /** A touch button: drawn now, active until the next frame. */
     private fun button(c: Canvas, l: Float, t: Float, r: Float, b: Float, label: String,
-                       primary: Boolean = false, selected: Boolean = false, enabled: Boolean = true, action: () -> Unit) {
+                       primary: Boolean = false, selected: Boolean = false, enabled: Boolean = true,
+                       hold: (() -> Unit)? = null, action: () -> Unit) {
         val box = RectF(l, t, r, b)
         val h = b - t
         val rad = h * 0.22f
@@ -182,7 +183,7 @@ class DashView(context: Context, private val dash: Dash) : View(context) {
         labels.color = when { selected || primary -> Color.BLACK; enabled -> text; else -> faint }
         c.drawText(label, box.centerX(), box.centerY() + labels.textSize * 0.36f, labels)
         labels.isFakeBoldText = false
-        if (enabled) buttons.add(Btn(box, null, action))
+        if (enabled) buttons.add(Btn(box, hold, action))
     }
 
     /** Colour for anything that comes from the bike's CAN bus: grey when there's no CAN data. */
@@ -1504,6 +1505,12 @@ class DashView(context: Context, private val dash: Dash) : View(context) {
             "        mtu=${ble?.mtu} rssi=${ble?.rssi} reconn=${ble?.reconnects}" to text,
             "node    sending ${when (ble?.nodeSim) { true -> "SIM data"; false -> "LIVE bike data"; null -> "-" }}" to
                 (if (ble?.nodeSim != null && ble.nodeSim != (dash.source == Dash.Source.SIM)) amber else text),
+            "update  ${dash.nodeUpdateStatus ?: "-"}" to when {
+                dash.nodeUpdateStatus?.startsWith("ready") == true -> green
+                dash.nodeUpdateStatus?.let { it.startsWith("failed") || it.startsWith("refused") } == true -> red
+                dash.nodeUpdating -> amber
+                else -> text
+            },
             "mode    ${dash.appliance}" to text,
             "saving  ${if (dash.source == Dash.Source.LIVE) "on" else "off (SIM)"}" to text,
             "" to text,
@@ -1552,6 +1559,14 @@ class DashView(context: Context, private val dash: Dash) : View(context) {
         labels.textSize = H * 0.016f
         labels.color = label
         c.drawText("MAIN PAGE", x0 + bw / 2f, ty - H * 0.010f, labels)
+        // CAN node over-the-air update: tap = start / stop, hold = hotspot details
+        val ux = x0 + 2 * (bw + gap)
+        button(c, ux, ty, ux + bw, ty + bh, if (dash.nodeUpdating) "STOP UPDATE" else "NODE UPDATE",
+            primary = dash.nodeUpdating, hold = { dash.editHotspot() }) { dash.nodeUpdatePress() }
+        labels.textAlign = Paint.Align.CENTER
+        labels.textSize = H * 0.016f
+        labels.color = label
+        c.drawText("HOLD: HOTSPOT", ux + bw / 2f, ty - H * 0.010f, labels)
         button(c, x0 + bw + gap, by, x0 + 2 * bw + gap, by + bh, "BRIGHT ${dash.brightnessText}") { dash.stepBrightness() }
         button(c, x0 + 2 * (bw + gap), by, x0 + 3 * bw + 2 * gap, by + bh, if (dash.maintenanceArmed) "TAP AGAIN" else "SETTINGS",
             primary = dash.maintenanceArmed) { dash.maintenancePress() }

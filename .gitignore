@@ -19,3 +19,6 @@ Maps/
 # OS
 Thumbs.db
 .DS_Store
+
+# Local secrets (OTA password)
+secrets.ini

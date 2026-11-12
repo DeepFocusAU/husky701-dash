@@ -38,6 +38,7 @@ Each folder has its own detailed README. Open `husky701-dash.code-workspace` in 
 cd can-node
 pio run -e selftest -t upload   # bench: made-up CAN data, no bike needed
 pio run -e node -t upload       # the real firmware
+pio run -e node_ota -t upload   # the same, over the phone hotspot (see can-node README)
 pio device monitor -b 921600    # press s for status
 ```
 

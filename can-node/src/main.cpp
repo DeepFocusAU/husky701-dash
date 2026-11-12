@@ -13,6 +13,7 @@
 #include "gps.h"
 #include "ble_link.h"
 #include "taps.h"
+#include "wifi_ota.h"
 
 #include "selftest.h"
 
@@ -128,8 +129,38 @@ static void printStatus(uint32_t now) {
 #if BLE_ENABLE
     Serial.printf("# BLE %s  sent=%lu  mode=%s\n", ble.connected() ? "PHONE CONNECTED" : "advertising",
                   (unsigned long)ble.framesSent(), sim ? "SIM" : "LIVE");
+    if (wifiOta.state() != WifiOta::State::Off) Serial.printf("# UPDATE %s\n", wifiOta.status().c_str());
 #endif
 }
+
+#if BLE_ENABLE
+// Update mode (wifi_ota.h): started and stopped from the phone, only with the engine off.
+static bool engineRunning(uint32_t now) {
+    if (sim) return false;              // made-up rpm doesn't count
+    TelemetryPayload p;
+    decoder.fill(p, now);
+    return p.rpm > 0;
+}
+
+static void serviceUpdates(uint32_t now) {
+    uint8_t cmd;
+    String ssid, pass;
+    if (ble.takeOtaCommand(cmd, ssid, pass)) {
+        if (cmd == 0) wifiOta.stop("off");
+        else if (engineRunning(now)) wifiOta.stop("refused: engine running");
+        else wifiOta.start(ssid.c_str(), pass.c_str());
+    }
+    if (wifiOta.active() && wifiOta.state() != WifiOta::State::Updating && engineRunning(now))
+        wifiOta.stop("off: engine started");
+    wifiOta.poll(now);
+
+    static uint32_t sentSeq = 0;
+    if (wifiOta.statusSeq() != sentSeq) {
+        sentSeq = wifiOta.statusSeq();
+        ble.setOtaStatus(wifiOta.status());
+    }
+}
+#endif
 
 // Wiring check: for 60 s, drives the RS-485 pair low for 3 s (LED red) then releases
 // it for 3 s (LED off), so it can be followed on a meter or by the dash's "linktest".
@@ -284,6 +315,7 @@ void loop() {
     const int taps = tapsPoll();
 #if BLE_ENABLE
     if (taps) ble.sendTaps((uint8_t)taps);
+    serviceUpdates(now);
 #else
     (void)taps;
 #endif

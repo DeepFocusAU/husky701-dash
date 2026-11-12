@@ -10,6 +10,7 @@ object DashConfig {
     val BLE_TAPS: UUID = UUID.fromString("7a1e0003-4b8f-4c1e-9a70-701d45a00001")
 
     val BLE_MODE: UUID = UUID.fromString("7a1e0004-4b8f-4c1e-9a70-701d45a00001")      // write 1 = node SIM, 0 = LIVE
+    val BLE_OTA: UUID = UUID.fromString("7a1e0005-4b8f-4c1e-9a70-701d45a00001")       // node update mode, see NodeOta
     val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     const val LINK_TIMEOUT_MS = 500L        // no valid frame this long -> NO LINK
     const val BLE_SEQ_STEP = 2              // = BLE_FRAME_DIV: the node sends every 2nd frame over BLE

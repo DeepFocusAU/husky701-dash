@@ -32,6 +32,9 @@ class Dash(
         fun closeSplit()
         /** Two short beeps (key on, engine off). */
         fun beep()
+        /** The phone's Wi-Fi hotspot, sent to the CAN node for updates (kept across restarts). */
+        var hotspotSsid: String
+        var hotspotPass: String
     }
 
     /** The map app shown above the tacho in split screen. The first installed package is used. */
@@ -275,6 +278,45 @@ class Dash(
     fun toggleThrottle() {
         platform.showThrottle = !platform.showThrottle
         showToast(if (platform.showThrottle) "THROTTLE SHOWN" else "THROTTLE HIDDEN")
+    }
+
+    /** Asks for the hotspot name and password (set by MainActivity); the answer is null if cancelled. */
+    var askHotspot: ((String, String, (Pair<String, String>?) -> Unit) -> Unit)? = null
+
+    /** The node's update-mode status for Diagnostics, or null if it can't be updated from here. */
+    val nodeUpdateStatus: String? get() = ble?.otaStatus
+    val nodeUpdating get() = NodeOta.active(ble?.otaStatus)
+
+    /** NODE UPDATE: starts the node's Wi-Fi update mode, or stops it if it's on. */
+    fun nodeUpdatePress() {
+        val b = ble ?: return showToast("NO BLUETOOTH")
+        when {
+            b.state != BleTelemetry.State.CONNECTED -> showToast("NODE NOT CONNECTED")
+            b.otaStatus == null -> showToast("NODE FIRMWARE HAS NO UPDATE MODE")
+            nodeUpdating -> { b.stopNodeOta(); showToast("NODE UPDATE STOPPED") }
+            source == Source.LIVE && parser.latest.rpm > 0 -> showToast("STOP THE ENGINE FIRST")
+            platform.hotspotSsid.isEmpty() -> editHotspot { nodeUpdatePress() }
+            else -> {
+                val problem = NodeOta.problem(platform.hotspotSsid, platform.hotspotPass)
+                if (problem != null) { showToast(problem); return }
+                b.startNodeOta(platform.hotspotSsid, platform.hotspotPass)
+                showToast("TURN ON THE PHONE HOTSPOT")
+            }
+        }
+    }
+
+    /** Hold NODE UPDATE: change the hotspot details. [then] runs after they're saved. */
+    fun editHotspot(then: (() -> Unit)? = null) {
+        val ask = askHotspot ?: return
+        ask(platform.hotspotSsid, platform.hotspotPass) { answer ->
+            if (answer == null) return@ask
+            val (ssid, pass) = answer.first.trim() to answer.second
+            NodeOta.problem(ssid, pass)?.let { showToast(it); return@ask }
+            platform.hotspotSsid = ssid
+            platform.hotspotPass = pass
+            showToast("HOTSPOT SAVED")
+            then?.invoke()
+        }
     }
 
     fun stepBrightness() {

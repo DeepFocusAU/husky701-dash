@@ -116,6 +116,7 @@ ol li, ul li { margin: 4px 0; }
   <a href="#signals">CAN signals</a>
   <a href="#wire-format">Wire format</a>
   <a href="#ble">Bluetooth</a>
+  <a href="#ota">OTA updates</a>
   <a href="#tools">Tools &amp; logs</a>
   <a href="#bringup">Bring-up</a>
   <a href="#dashes">Android app</a>
@@ -309,7 +310,8 @@ ol li, ul li { margin: 4px 0; }
     <tr><td class="mono">can_decode.*</td><td>Pure logic, no hardware calls: turns frames into a <code>TelemetryPayload</code>, tracks when each ID was last seen, applies the timeouts. Unit-testable on a PC.</td></tr>
     <tr><td class="mono">sdlog.*</td><td>FAT32 logger. New <code>LOGnnnnn.CSV</code> per power-on, flushed every 2 s, drops and counts lines rather than stalling.</td></tr>
     <tr><td class="mono">gps.*</td><td>NEO-6M parser. Local time from <code>GPS_TIME_ZONE</code> (POSIX TZ, with daylight saving), date, position, speed, course, height, HDOP. Raw <code>$GPRMC</code> lines go to the SD log.</td></tr>
-    <tr><td class="mono">ble_link.*</td><td>NimBLE GATT server: Frame, Taps and Mode characteristics. Mode reverts to LIVE on disconnect.</td></tr>
+    <tr><td class="mono">ble_link.*</td><td>NimBLE GATT server: Frame, Taps, Mode and Ota characteristics. Mode reverts to LIVE on disconnect.</td></tr>
+    <tr><td class="mono">wifi_ota.*</td><td>Update mode: joins the phone hotspot with details sent over BLE, runs ArduinoOTA with a password, 30 s join and 10 min idle timeouts, stops if the engine starts.</td></tr>
     <tr><td class="mono">taps.*</td><td>Piezo gesture counter, same timing as the ESP32 dash: 40 ms quiet before a new pulse, gesture ends 450 ms after the last pulse, up to 4 taps.</td></tr>
     <tr><td class="mono">sniffer.*</td><td>USB serial tools for reverse engineering: ID table with rates, log all frames, or only frames that changed.</td></tr>
     <tr><td class="mono">selftest.*</td><td>Made-up 20 s sweep of rpm, gears, coolant and throttle, fed through the real decoder.</td></tr>
@@ -412,8 +414,32 @@ for (size_t i = 0; i &lt; len; i++) {
     <tr><td>Frame</td><td class="mono">7a1e0002-…</td><td>notify</td><td>One whole 42-byte wire frame, every 2nd RS-485 frame (25/s). Needs MTU ≥ 45; the app asks for 247</td></tr>
     <tr><td>Taps</td><td class="mono">7a1e0003-…</td><td>notify, read</td><td><code>[gesture seq][tap count]</code>; seq steps on every gesture so repeats are seen</td></tr>
     <tr><td>Mode</td><td class="mono">7a1e0004-…</td><td>write, read</td><td><code>1</code> = SIM, <code>0</code> = LIVE. Back to LIVE on disconnect and at power-up</td></tr>
+    <tr><td>Ota</td><td class="mono">7a1e0005-…</td><td>write (encrypted), read, notify</td><td>Write <code>[1][ssid len][ssid][pass len][pass]</code> to start <a href="#ota">update mode</a>, <code>[0]</code> to stop. Notifies status text: <code>connecting…</code>, <code>ready 192.168.x.x</code>, <code>updating NN%</code>, <code>failed: …</code></td></tr>
   </table></div>
   <p>When the phone selects SIM on its Diagnostics page, the node ignores the bike and sends the selftest sweep on both links, sets <code>reserved</code> bit 0 and flashes its LED. The phone drops any frame flagged SIM while it is in LIVE, so made-up data can't show as real.</p>
+</section>
+
+<!-- ================================================================== -->
+<section id="ota">
+  <h2><small>CAN node</small>Over-the-air updates</h2>
+  <p class="lead">The node under the seat is updated from VS Code over the phone's Wi-Fi hotspot. The phone gives the node the hotspot details over Bluetooth, so nothing is configured on the node itself. Wi-Fi is off except in update mode.</p>
+<pre><code>Phone (Diagnostics)              CAN node                         Laptop (VS Code)
+NODE UPDATE ──BLE, encrypted──▶ joins the phone hotspot
+   [1][ssid][password]          ArduinoOTA: husky701-node.local
+update: ready 192.168.x.x ◀──── status notify                 ◀── pio run -e node_ota -t upload
+update: updating 40%    ◀────── MD5 + password checked             (same hotspot)
+                                reboots on the new firmware</code></pre>
+  <div class="tablewrap"><table>
+    <tr><th>Step</th><th>What to do</th></tr>
+    <tr><td>Once</td><td>Copy <code>can-node/secrets.example.ini</code> to <code>secrets.ini</code> (gitignored) and set <code>ota_password</code>. Upload <code>node</code> by USB once, which moves to the <code>min_spiffs.csv</code> partitions (two 1.9 MB app slots). Hold <b>NODE UPDATE</b> on the phone to enter the hotspot name and password. On Windows, allow inbound TCP 32323 (the node connects back to the laptop).</td></tr>
+    <tr><td>Each update</td><td>Engine off, hotspot on, tap <b>NODE UPDATE</b>. When Diagnostics shows <code>update ready 192.168.x.x</code>, join the laptop to the hotspot and run <code>pio run -e node_ota -t upload</code> (add <code>--upload-port &lt;IP&gt;</code> if <code>.local</code> names don't resolve).</td></tr>
+  </table></div>
+  <ul>
+    <li>Refused with the engine running; Wi-Fi switches off if the engine starts.</li>
+    <li>Ends after 10 minutes without an upload, on <b>STOP UPDATE</b>, or on any failure.</li>
+    <li>The hotspot details are never saved on the node. The first write pairs the phone with the node ("just works", no PIN), so they travel encrypted.</li>
+    <li>An interrupted or wrong upload leaves the old firmware running. USB always works as a fallback.</li>
+  </ul>
 </section>
 
 <!-- ================================================================== -->
@@ -513,6 +539,7 @@ for (size_t i = 0; i &lt; len; i++) {
 cd can-node
 pio run -e selftest -t upload     # bench, no bike
 pio run -e node -t upload         # real firmware
+pio run -e node_ota -t upload     # real firmware over Wi-Fi (see OTA updates)
 pio device monitor -b 921600
 
 # ESP32 dash
