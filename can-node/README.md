@@ -12,7 +12,8 @@ Board: **T-CAN485 with CH9102F USB** (LilyGO option Q331). Windows may need the 
 |-----|--------------|-------|
 | `node` (default) | The real firmware | The bike |
 | `selftest` | Feeds made-up CAN frames through the real decoder and sends the result to the dash. CAN controller not started | Node and dash on the bench |
-| `node_ota` | The `node` firmware, uploaded over Wi-Fi (see [Over-the-air updates](#over-the-air-updates)) | Node in update mode, computer on the phone hotspot |
+| `node_ota` | The `node` firmware, uploaded over Wi-Fi (see [Over-the-air updates](#over-the-air-updates)) | Node in update mode, computer on the same Wi-Fi |
+| `node_debug` | The `node` firmware with the ESP32 core's own debug log on USB serial (Wi-Fi, Bluetooth) | Bench, chasing connection problems |
 
 ## Before connecting to the bike
 
@@ -120,6 +121,7 @@ Monitor at **921600**. Type one letter:
 | `r` | Log every frame |
 | `c` | Log only frames whose bytes changed |
 | `o` | Logging off |
+| `w` | Wi-Fi networks the node can see (2.4 GHz), for checking the update Wi-Fi |
 | `h` | RS-485 line test: 3 s low (LED red), 3 s released (LED off), for 60 s. Pauses everything else, so bench use only |
 
 Log format: `millis ID length bytes...`. The dash link keeps running while logging. If the USB port can't keep up, log lines are dropped and counted as `logdrop`, and nothing else slows down.
@@ -162,28 +164,30 @@ Sets the dash clock and records position and speed in the SD log, at 1 update pe
 
 ## Over-the-air updates
 
-After one USB upload, the node can be updated over Wi-Fi, through the Samsung's hotspot. Wi-Fi is off the rest of the time.
+After one USB upload, the node can be updated over Wi-Fi from VS Code. The phone holds the Wi-Fi details and sends them to the node over Bluetooth, so nothing is set up on the node. At home use the home Wi-Fi, and the laptop stays on its normal network and internet. Away from home, use the phone's hotspot. Wi-Fi on the node is off the rest of the time.
 
 **One-time setup**
 1. Copy `secrets.example.ini` to `secrets.ini` and set a long `ota_password`. `secrets.ini` is gitignored. A firmware built without it refuses update mode.
 2. Upload `node` over USB once. This build changes the partition table to `min_spiffs.csv` (two 1.9 MB app slots), which OTA can't do by itself.
-3. On the phone, hold **NODE UPDATE** on Diagnostics and enter the hotspot name and password (Settings > Connections > Mobile Hotspot). The app keeps them.
-4. Windows: allow inbound TCP port 32323 for the PlatformIO Python (or for that port), because the node connects back to the computer during an upload:
+3. On the phone, hold **NODE UPDATE** on Diagnostics and enter the Wi-Fi name and password (home Wi-Fi, or the phone hotspot). The app keeps them. 2.4 GHz only: the ESP32 can't join 5 GHz.
+4. Windows: allow inbound TCP port 32323, because the node connects back to the computer during an upload. In an admin PowerShell:
    ```powershell
    New-NetFirewallRule -DisplayName "ESP32 OTA" -Direction Inbound -Protocol TCP -LocalPort 32323 -Action Allow -Profile Private,Public
    ```
+   A VPN on the laptop (NordVPN and similar) can block local traffic: allow LAN access in its settings, or pause it for the upload.
 
 **Each update**
-1. Engine off, key on. Turn on the phone's hotspot.
-2. Tap **NODE UPDATE**. The first time, Android pairs with the node (no PIN). The `update` line on Diagnostics goes `connecting to …`, then `ready 192.168.x.x`.
-3. Join the laptop to the same hotspot and run `pio run -e node_ota -t upload` in `can-node`. If `husky701-node.local` doesn't resolve, add `--upload-port 192.168.x.x` with the IP from the app.
-4. The status shows `updating NN%`, then `done, restarting`. The node reboots on the new firmware and the phone reconnects.
+1. Engine off, key on, node in range of the Wi-Fi.
+2. Tap **NODE UPDATE**. The `update` line on Diagnostics goes `connecting to …`, then `ready 192.168.x.x`.
+3. With the laptop on the same network, run `pio run -e node_ota -t upload` in `can-node`. If `husky701-node.local` doesn't resolve, add `--upload-port 192.168.x.x` with the IP from the app.
+4. The status shows `updating NN%`, then `done, restarting`. The node reboots on the new firmware, the phone reconnects, and the update line shows the new `fw` version (`FW_VERSION` in `include/config.h`; bump it with each release).
 
 **Safety rules in the firmware**
 - Refused while the engine runs (rpm > 0 in LIVE). If the engine starts during update mode, Wi-Fi switches off.
 - Update mode ends after 10 minutes without an upload, on STOP UPDATE, or on any failure.
-- The hotspot details are sent over an encrypted BLE link and are never saved on the node (`WiFi.persistent(false)`).
+- The Wi-Fi details are never saved on the node (`WiFi.persistent(false)`). They cross Bluetooth unencrypted for that one write, because the dash runs in kiosk mode where Android can't show a pairing prompt: someone sniffing BLE within about 10 m at that moment could read them. Uploads still need the OTA password.
 - An upload must know the OTA password, and is MD5-checked before the node switches to it. An interrupted upload leaves the old firmware running, and USB always works as a fallback.
+- The node has one 2.4 GHz radio for Bluetooth and Wi-Fi. In update mode it gives Wi-Fi priority, slows the phone link to 100–200 ms and pauses the live frames (the dash shows NO LINK), or Wi-Fi can't even join. Status messages still reach the phone.
 - The status line shows `# UPDATE …` while it's on, and every change is printed as `# update: …`.
 
 ## Settings

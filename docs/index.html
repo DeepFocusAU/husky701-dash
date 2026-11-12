@@ -301,7 +301,7 @@ ol li, ul li { margin: 4px 0; }
  │                     ├─ frame = A5 5A payload crc16
  │                     ├─ Serial2 ──▶ RS-485
  │                     └─ every 2nd frame ──▶ BLE notify
- ├─ handleCommands() USB serial: s r c o h
+ ├─ handleCommands() USB serial: s r c o h w
  └─ every 1 s        updateLed()  R / A / G</code></pre>
 
   <div class="tablewrap"><table>
@@ -311,7 +311,7 @@ ol li, ul li { margin: 4px 0; }
     <tr><td class="mono">sdlog.*</td><td>FAT32 logger. New <code>LOGnnnnn.CSV</code> per power-on, flushed every 2 s, drops and counts lines rather than stalling.</td></tr>
     <tr><td class="mono">gps.*</td><td>NEO-6M parser. Local time from <code>GPS_TIME_ZONE</code> (POSIX TZ, with daylight saving), date, position, speed, course, height, HDOP. Raw <code>$GPRMC</code> lines go to the SD log.</td></tr>
     <tr><td class="mono">ble_link.*</td><td>NimBLE GATT server: Frame, Taps, Mode and Ota characteristics. Mode reverts to LIVE on disconnect.</td></tr>
-    <tr><td class="mono">wifi_ota.*</td><td>Update mode: joins the phone hotspot with details sent over BLE, runs ArduinoOTA with a password, 30 s join and 10 min idle timeouts, stops if the engine starts.</td></tr>
+    <tr><td class="mono">wifi_ota.*</td><td>Update mode: joins the Wi-Fi (home or phone hotspot) sent over BLE, runs ArduinoOTA with a password, 30 s join and 10 min idle timeouts, stops if the engine starts.</td></tr>
     <tr><td class="mono">taps.*</td><td>Piezo gesture counter, same timing as the ESP32 dash: 40 ms quiet before a new pulse, gesture ends 450 ms after the last pulse, up to 4 taps.</td></tr>
     <tr><td class="mono">sniffer.*</td><td>USB serial tools for reverse engineering: ID table with rates, log all frames, or only frames that changed.</td></tr>
     <tr><td class="mono">selftest.*</td><td>Made-up 20 s sweep of rpm, gears, coolant and throttle, fed through the real decoder.</td></tr>
@@ -414,7 +414,7 @@ for (size_t i = 0; i &lt; len; i++) {
     <tr><td>Frame</td><td class="mono">7a1e0002-…</td><td>notify</td><td>One whole 42-byte wire frame, every 2nd RS-485 frame (25/s). Needs MTU ≥ 45; the app asks for 247</td></tr>
     <tr><td>Taps</td><td class="mono">7a1e0003-…</td><td>notify, read</td><td><code>[gesture seq][tap count]</code>; seq steps on every gesture so repeats are seen</td></tr>
     <tr><td>Mode</td><td class="mono">7a1e0004-…</td><td>write, read</td><td><code>1</code> = SIM, <code>0</code> = LIVE. Back to LIVE on disconnect and at power-up</td></tr>
-    <tr><td>Ota</td><td class="mono">7a1e0005-…</td><td>write (encrypted), read, notify</td><td>Write <code>[1][ssid len][ssid][pass len][pass]</code> to start <a href="#ota">update mode</a>, <code>[0]</code> to stop. Notifies status text: <code>connecting…</code>, <code>ready 192.168.x.x</code>, <code>updating NN%</code>, <code>failed: …</code></td></tr>
+    <tr><td>Ota</td><td class="mono">7a1e0005-…</td><td>write, read, notify</td><td>Write <code>[1][ssid len][ssid][pass len][pass]</code> to start <a href="#ota">update mode</a>, <code>[0]</code> to stop. Notifies status text: <code>connecting…</code>, <code>ready 192.168.x.x</code>, <code>updating NN%</code>, <code>failed: …</code></td></tr>
   </table></div>
   <p>When the phone selects SIM on its Diagnostics page, the node ignores the bike and sends the selftest sweep on both links, sets <code>reserved</code> bit 0 and flashes its LED. The phone drops any frame flagged SIM while it is in LIVE, so made-up data can't show as real.</p>
 </section>
@@ -422,22 +422,23 @@ for (size_t i = 0; i &lt; len; i++) {
 <!-- ================================================================== -->
 <section id="ota">
   <h2><small>CAN node</small>Over-the-air updates</h2>
-  <p class="lead">The node under the seat is updated from VS Code over the phone's Wi-Fi hotspot. The phone gives the node the hotspot details over Bluetooth, so nothing is configured on the node itself. Wi-Fi is off except in update mode.</p>
+  <p class="lead">The node under the seat is updated from VS Code over Wi-Fi. The phone holds the Wi-Fi details and sends them to the node over Bluetooth, so nothing is configured on the node. At home that's the home Wi-Fi, so the laptop stays on its normal network; away from home, the phone's hotspot. Wi-Fi on the node is off except in update mode.</p>
 <pre><code>Phone (Diagnostics)              CAN node                         Laptop (VS Code)
-NODE UPDATE ──BLE, encrypted──▶ joins the phone hotspot
+NODE UPDATE ──BLE───────────▶ joins the Wi-Fi it was given
    [1][ssid][password]          ArduinoOTA: husky701-node.local
 update: ready 192.168.x.x ◀──── status notify                 ◀── pio run -e node_ota -t upload
-update: updating 40%    ◀────── MD5 + password checked             (same hotspot)
-                                reboots on the new firmware</code></pre>
+update: updating 40%    ◀────── MD5 + password checked             (same Wi-Fi)
+update: off, fw 1.2     ◀────── reboots on the new firmware</code></pre>
   <div class="tablewrap"><table>
     <tr><th>Step</th><th>What to do</th></tr>
-    <tr><td>Once</td><td>Copy <code>can-node/secrets.example.ini</code> to <code>secrets.ini</code> (gitignored) and set <code>ota_password</code>. Upload <code>node</code> by USB once, which moves to the <code>min_spiffs.csv</code> partitions (two 1.9 MB app slots). Hold <b>NODE UPDATE</b> on the phone to enter the hotspot name and password. On Windows, allow inbound TCP 32323 (the node connects back to the laptop).</td></tr>
-    <tr><td>Each update</td><td>Engine off, hotspot on, tap <b>NODE UPDATE</b>. When Diagnostics shows <code>update ready 192.168.x.x</code>, join the laptop to the hotspot and run <code>pio run -e node_ota -t upload</code> (add <code>--upload-port &lt;IP&gt;</code> if <code>.local</code> names don't resolve).</td></tr>
+    <tr><td>Once</td><td>Copy <code>can-node/secrets.example.ini</code> to <code>secrets.ini</code> (gitignored) and set <code>ota_password</code>. Upload <code>node</code> by USB once, which moves to the <code>min_spiffs.csv</code> partitions (two 1.9 MB app slots). Hold <b>NODE UPDATE</b> on the phone to enter the Wi-Fi name and password (2.4 GHz). On Windows, allow inbound TCP 32323 (the node connects back to the laptop), and let any VPN allow LAN traffic.</td></tr>
+    <tr><td>Each update</td><td>Engine off, tap <b>NODE UPDATE</b>. When Diagnostics shows <code>update ready 192.168.x.x</code>, run <code>pio run -e node_ota -t upload</code> from a laptop on the same network (add <code>--upload-port &lt;IP&gt;</code> if <code>.local</code> names don't resolve). Bump <code>FW_VERSION</code> to see the new version on the phone afterwards.</td></tr>
   </table></div>
   <ul>
     <li>Refused with the engine running; Wi-Fi switches off if the engine starts.</li>
     <li>Ends after 10 minutes without an upload, on <b>STOP UPDATE</b>, or on any failure.</li>
-    <li>The hotspot details are never saved on the node. The first write pairs the phone with the node ("just works", no PIN), so they travel encrypted.</li>
+    <li>Bluetooth and Wi-Fi share one radio, so in update mode the node gives Wi-Fi priority, slows the phone link and pauses live frames (the dash shows NO LINK until it restarts).</li>
+    <li>The Wi-Fi details are never saved on the node. They cross Bluetooth unencrypted for that one write (the dash runs in kiosk mode, where Android can't show a pairing prompt), so a BLE sniffer within about 10 m at that moment could read them. Uploads still need the OTA password.</li>
     <li>An interrupted or wrong upload leaves the old firmware running. USB always works as a fallback.</li>
   </ul>
 </section>
@@ -452,6 +453,7 @@ update: updating 40%    ◀────── MD5 + password checked            
     <tr><td class="mono">r</td><td>Log every frame: <code>millis ID length bytes…</code></td></tr>
     <tr><td class="mono">c</td><td>Log only frames whose bytes changed (best for finding a signal)</td></tr>
     <tr><td class="mono">o</td><td>Logging off</td></tr>
+    <tr><td class="mono">w</td><td>Wi-Fi networks the node can see (2.4 GHz), for checking the update Wi-Fi</td></tr>
     <tr><td class="mono">h</td><td>RS-485 line test: 3 s low, 3 s released, for 60 s. Bench only</td></tr>
   </table></div>
   <p>SD log format, one file per power-on, plus GPS NMEA lines when a module is fitted:</p>

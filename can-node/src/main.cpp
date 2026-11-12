@@ -2,7 +2,7 @@
 // Bike CAN bus (listen-only) -> decode -> telemetry frames to the dash over RS-485.
 //
 // USB serial commands at 921600: s = status + ID table, r = log every frame,
-// c = log only frames whose bytes changed, o = logging off.
+// c = log only frames whose bytes changed, o = logging off, w = Wi-Fi networks the node can see.
 #include <Arduino.h>
 #include "config.h"
 #include "telemetry_packet.h"
@@ -127,8 +127,8 @@ static void printStatus(uint32_t now) {
     Serial.printf("# GPS %s  sats=%u time=%02u:%02u speed=%.1fkm/h\n", gps.statusName(), gps.satellites(),
                   gps.localHour(), gps.localMinute(), gps.kmh());
 #if BLE_ENABLE
-    Serial.printf("# BLE %s  sent=%lu  mode=%s\n", ble.connected() ? "PHONE CONNECTED" : "advertising",
-                  (unsigned long)ble.framesSent(), sim ? "SIM" : "LIVE");
+    Serial.printf("# BLE %s  sent=%lu  mode=%s  fw=%s\n", ble.connected() ? "PHONE CONNECTED" : "advertising",
+                  (unsigned long)ble.framesSent(), sim ? "SIM" : "LIVE", FW_VERSION);
     if (wifiOta.state() != WifiOta::State::Off) Serial.printf("# UPDATE %s\n", wifiOta.status().c_str());
 #endif
 }
@@ -148,11 +148,16 @@ static void serviceUpdates(uint32_t now) {
     if (ble.takeOtaCommand(cmd, ssid, pass)) {
         if (cmd == 0) wifiOta.stop("off");
         else if (engineRunning(now)) wifiOta.stop("refused: engine running");
-        else wifiOta.start(ssid.c_str(), pass.c_str());
+        else {
+            ble.setQuiet(true);             // radio to Wi-Fi first, or Wi-Fi start-up crawls
+            delay(500);                     // engine is off: let the phone take the slower link
+            wifiOta.start(ssid.c_str(), pass.c_str());
+        }
     }
     if (wifiOta.active() && wifiOta.state() != WifiOta::State::Updating && engineRunning(now))
         wifiOta.stop("off: engine started");
     wifiOta.poll(now);
+    ble.setQuiet(wifiOta.active());
 
     static uint32_t sentSeq = 0;
     if (wifiOta.statusSeq() != sentSeq) {
@@ -189,6 +194,9 @@ static void handleCommands(uint32_t now) {
         case 'r': sniffer.setMode(Sniffer::Mode::All); break;
         case 'c': sniffer.setMode(Sniffer::Mode::Changes); break;
         case 'o': sniffer.setMode(Sniffer::Mode::Off); break;
+#if BLE_ENABLE
+        case 'w': wifiOta.scan(); break;
+#endif
         default: break;
         }
     }
@@ -256,6 +264,7 @@ void setup() {
 #if BLE_ENABLE
     ble.begin();
 #endif
+    Serial.printf("# firmware %s, built %s %s\n", FW_VERSION, __DATE__, __TIME__);
 
 #ifdef SELFTEST
     Serial.println("# Husky701 CAN node: SELFTEST, CAN bus not used");

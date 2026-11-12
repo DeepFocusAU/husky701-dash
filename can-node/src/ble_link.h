@@ -11,9 +11,9 @@
 //                             for every finished gesture, so a repeated count is still seen.
 //   Mode      BLE_MODE_UUID   write + read: [1] = SIM (made-up test data), [0] = LIVE (the bike).
 //                             Back to LIVE when the phone disconnects, and always LIVE at power-up.
-//   Ota       BLE_OTA_UUID    write (encrypted, so the phone pairs first) + read + notify.
+//   Ota       BLE_OTA_UUID    write + read + notify (no pairing: the phone runs in kiosk mode).
 //                             Write [1][ssid len][ssid][pass len][pass] = start update mode on that
-//                             Wi-Fi hotspot, [0] = stop. Read/notify: status text, e.g.
+//                             Wi-Fi network, [0] = stop. Read/notify: status text, e.g.
 //                             "ready 192.168.43.57" (see wifi_ota.h).
 #pragma once
 #include <Arduino.h>
@@ -39,6 +39,8 @@ public:
     bool takeOtaCommand(uint8_t &cmd, String &ssid, String &pass);
     // Shows the update status to the phone (read, and notify if connected).
     void setOtaStatus(const String &status);
+    // Update mode: slow link, no telemetry frames, and Wi-Fi gets priority on the shared radio.
+    void setQuiet(bool on);
 
 private:
     uint32_t framesSent_ = 0;

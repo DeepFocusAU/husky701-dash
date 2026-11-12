@@ -1559,14 +1559,14 @@ class DashView(context: Context, private val dash: Dash) : View(context) {
         labels.textSize = H * 0.016f
         labels.color = label
         c.drawText("MAIN PAGE", x0 + bw / 2f, ty - H * 0.010f, labels)
-        // CAN node over-the-air update: tap = start / stop, hold = hotspot details
+        // CAN node over-the-air update: tap = start / stop, hold = Wi-Fi details
         val ux = x0 + 2 * (bw + gap)
         button(c, ux, ty, ux + bw, ty + bh, if (dash.nodeUpdating) "STOP UPDATE" else "NODE UPDATE",
-            primary = dash.nodeUpdating, hold = { dash.editHotspot() }) { dash.nodeUpdatePress() }
+            primary = dash.nodeUpdating, hold = { dash.editWifi() }) { dash.nodeUpdatePress() }
         labels.textAlign = Paint.Align.CENTER
         labels.textSize = H * 0.016f
         labels.color = label
-        c.drawText("HOLD: HOTSPOT", ux + bw / 2f, ty - H * 0.010f, labels)
+        c.drawText("HOLD: WI-FI", ux + bw / 2f, ty - H * 0.010f, labels)
         button(c, x0 + bw + gap, by, x0 + 2 * bw + gap, by + bh, "BRIGHT ${dash.brightnessText}") { dash.stepBrightness() }
         button(c, x0 + 2 * (bw + gap), by, x0 + 3 * bw + 2 * gap, by + bh, if (dash.maintenanceArmed) "TAP AGAIN" else "SETTINGS",
             primary = dash.maintenanceArmed) { dash.maintenancePress() }

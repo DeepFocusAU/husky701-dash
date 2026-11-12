@@ -190,8 +190,8 @@ class ModelsTest {
         override fun closeSplit() { split = null }
         var beeps = 0
         override fun beep() { beeps++ }
-        override var hotspotSsid = ""
-        override var hotspotPass = ""
+        override var wifiSsid = ""
+        override var wifiPass = ""
     }
 
     // ------------------------------------------------------------ CAN node update mode
@@ -203,21 +203,24 @@ class ModelsTest {
         assertEquals(9, p[8].toInt())
         assertEquals("secret123", String(p, 9, 9, Charsets.UTF_8))
         assertEquals(18, p.size)
-        // open hotspot: empty password is allowed
+        // open network: empty password is allowed
         assertEquals(9, NodeOta.startPayload("Note10", "")!!.size)
         assertEquals(listOf<Byte>(0), NodeOta.stopPayload.toList())
     }
 
-    @Test fun nodeOtaRejectsBadHotspotDetails() {
-        assertEquals("NO HOTSPOT NAME", NodeOta.problem("", "secret123"))
+    @Test fun nodeOtaRejectsBadWifiDetails() {
+        assertEquals("NO WI-FI NAME", NodeOta.problem("", "secret123"))
         assertEquals("PASSWORD TOO SHORT", NodeOta.problem("Note10", "short"))
-        assertEquals("HOTSPOT NAME TOO LONG", NodeOta.problem("x".repeat(33), "secret123"))
+        assertEquals("WI-FI NAME TOO LONG", NodeOta.problem("x".repeat(33), "secret123"))
         assertEquals("PASSWORD TOO LONG", NodeOta.problem("Note10", "x".repeat(64)))
         assertNull(NodeOta.startPayload("Note10", "short"))
         assertTrue(NodeOta.active("ready 192.168.43.57"))
         assertTrue(NodeOta.active("updating 40%"))
         assertFalse(NodeOta.active("off: no upload within 10 min"))
         assertFalse(NodeOta.active(null))
+        assertEquals("ready 192.168.1.50", NodeOta.statusText("ready 192.168.1.50".toByteArray()))
+        assertNull(NodeOta.statusText("received".toByteArray()))
+        assertEquals("unreadable (update the node by USB)", NodeOta.statusText(NodeOta.startPayload("WifiOne", "secret123")!!))
     }
 
     private fun makeDash(hour: Int = 12, platform: FakePlatform = FakePlatform()) =

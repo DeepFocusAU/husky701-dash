@@ -5,8 +5,8 @@
 // link drops it scans again by itself, so key-off / key-on needs nothing from the rider.
 // It also writes the Mode characteristic (LIVE or SIM) on every connect and whenever the
 // dash's data source changes; the node goes back to LIVE by itself when the link drops.
-// The Ota characteristic starts the node's Wi-Fi update mode (see NodeOta.kt); writing it needs
-// an encrypted link, so the first time Android pairs with the node ("just works", no PIN).
+// The Ota characteristic starts the node's Wi-Fi update mode (see NodeOta.kt). No pairing: the
+// dash runs in kiosk mode, where Android can't show a pairing prompt.
 // The UUIDs must match BLE_* in the CAN node's include/config.h.
 package com.husky701.dash
 
@@ -70,11 +70,11 @@ class BleTelemetry(
     private var otaPayload: ByteArray? = null
     private var otaAttempts = 0
 
-    /** Starts the node's update mode on this hotspot. */
+    /** Starts the node's update mode on this Wi-Fi network. */
     fun startNodeOta(ssid: String, pass: String) {
         otaPayload = NodeOta.startPayload(ssid, pass) ?: return
         otaAttempts = 0
-        otaStatus = "sending hotspot details"
+        otaStatus = "sending Wi-Fi details"
         gatt?.let { writeOta(it) }
     }
 
@@ -92,18 +92,14 @@ class BleTelemetry(
         if (!ok) retryOta(g)
     }
 
-    /** Busy, or the write needs pairing first (Android pairs by itself; "just works", no PIN). */
+    /** Busy with another request: try again shortly. */
     private fun retryOta(g: BluetoothGatt) {
         if (++otaAttempts > 15) {
             otaPayload = null
-            otaStatus = "failed: node didn't accept (pairing?)"
+            otaStatus = "failed: node didn't take the Wi-Fi details"
             return
         }
-        if (otaAttempts == 3 && g.device.bondState == BluetoothDevice.BOND_NONE) {
-            otaStatus = "pairing with node"
-            g.device.createBond()
-        }
-        main.postDelayed({ if (gatt === g) writeOta(g) }, 1000)
+        main.postDelayed({ if (gatt === g) writeOta(g) }, 500)
     }
 
     private fun write(g: BluetoothGatt, c: BluetoothGattCharacteristic, v: ByteArray): Boolean =
@@ -204,7 +200,7 @@ class BleTelemetry(
 
     private fun retryLater() {
         otaPayload = null
-        if (NodeOta.active(otaStatus) || otaStatus == "sending hotspot details" || otaStatus == "pairing with node")
+        if (NodeOta.active(otaStatus) || otaStatus == "sending Wi-Fi details")
             otaStatus = "unknown (link lost)"
         gatt?.close()
         gatt = null
@@ -258,7 +254,7 @@ class BleTelemetry(
             main.post {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     otaPayload = null           // don't keep the password around
-                    if (otaStatus == "sending hotspot details" || otaStatus == "pairing with node") otaStatus = "sent"
+                    if (otaStatus == "sending Wi-Fi details") otaStatus = "sent"
                 } else {
                     Log.i(TAG, "ota write status $status")
                     retryOta(g)
@@ -309,7 +305,7 @@ class BleTelemetry(
                     }
                 }
                 // "received" is only the node clearing the written password: not a status
-                DashConfig.BLE_OTA -> String(value, Charsets.UTF_8).let { if (it != "received") otaStatus = it }
+                DashConfig.BLE_OTA -> NodeOta.statusText(value)?.let { otaStatus = it }
             }
         }
     }

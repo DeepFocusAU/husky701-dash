@@ -42,11 +42,11 @@ class MainActivity : Activity(), Dash.Platform {
         set(v) { prefs.edit().putBoolean("showThrottle", v).apply() }
 
     // App-private storage, on a phone that's a dedicated dash.
-    override var hotspotSsid: String
+    override var wifiSsid: String
         get() = prefs.getString("hotspotSsid", "")!!
         set(v) { prefs.edit().putString("hotspotSsid", v).apply() }
 
-    override var hotspotPass: String
+    override var wifiPass: String
         get() = prefs.getString("hotspotPass", "")!!
         set(v) { prefs.edit().putString("hotspotPass", v).apply() }
 
@@ -123,7 +123,7 @@ class MainActivity : Activity(), Dash.Platform {
         dash.w3w = What3Words(BuildConfig.W3W_API_KEY, Store(getSharedPreferences("w3w", MODE_PRIVATE)),
             { android.os.SystemClock.elapsedRealtime() }, { java.time.LocalDate.now().toEpochDay() })
         dash.askText = { title, initial, done -> askText(title, initial, done) }
-        dash.askHotspot = { ssid, pass, done -> askHotspot(ssid, pass, done) }
+        dash.askWifi = { ssid, pass, done -> askWifi(ssid, pass, done) }
         view = DashView(this, dash)
         setContentView(view)
 
@@ -272,8 +272,8 @@ class MainActivity : Activity(), Dash.Platform {
         input.requestFocus()
     }
 
-    /** The phone hotspot's name and password, for CAN node updates (Settings > Connections > Mobile Hotspot). */
-    private fun askHotspot(ssid: String, pass: String, done: (Pair<String, String>?) -> Unit) {
+    /** The Wi-Fi network the CAN node joins for updates: home Wi-Fi, or the phone hotspot. */
+    private fun askWifi(ssid: String, pass: String, done: (Pair<String, String>?) -> Unit) {
         var answer: Pair<String, String>? = null
         fun field(value: String, hint: String, max: Int, password: Boolean) = android.widget.EditText(this).apply {
             setText(value)
@@ -283,8 +283,8 @@ class MainActivity : Activity(), Dash.Platform {
             filters = arrayOf(android.text.InputFilter.LengthFilter(max))
             if (password) inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
-        val name = field(ssid, "Hotspot name", NodeOta.SSID_MAX, false)
-        val word = field(pass, "Hotspot password", NodeOta.PASS_MAX, true)
+        val name = field(ssid, "Wi-Fi name", NodeOta.SSID_MAX, false)
+        val word = field(pass, "Wi-Fi password", NodeOta.PASS_MAX, true)
         val show = android.widget.CheckBox(this).apply {
             text = "Show password"
             setOnCheckedChangeListener { _, on ->
@@ -300,7 +300,7 @@ class MainActivity : Activity(), Dash.Platform {
             addView(name); addView(word); addView(show)
         }
         val dlg = android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Phone hotspot for node updates")
+            .setTitle("Wi-Fi for CAN node updates")
             .setView(box)
             .setPositiveButton("SAVE") { _, _ -> answer = name.text.toString() to word.text.toString() }
             .setNegativeButton("CANCEL", null)

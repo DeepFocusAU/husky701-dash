@@ -1,8 +1,8 @@
-// wifi_ota.h - over-the-air firmware updates through the phone's Wi-Fi hotspot.
+// wifi_ota.h - over-the-air firmware updates over Wi-Fi (home Wi-Fi, or the phone's hotspot).
 //
-// Wi-Fi is off in normal running. The phone app sends the hotspot name and password over
+// Wi-Fi is off in normal running. The phone app sends a Wi-Fi name and password over
 // Bluetooth (BLE_OTA_UUID) when the rider taps NODE UPDATE with the engine off. The node
-// then joins the hotspot and waits for an ArduinoOTA upload from VS Code / PlatformIO
+// then joins that network and waits for an ArduinoOTA upload from VS Code / PlatformIO
 // (env:node_ota), as OTA_HOSTNAME.local or by the IP address shown in the app.
 //
 // - Nothing is stored: the credentials live in RAM until update mode ends.
@@ -22,6 +22,8 @@ public:
     bool start(const char *ssid, const char *password);
     // Ends update mode and switches Wi-Fi off. 'why' is shown in the status.
     void stop(const char *why);
+    // Prints the networks the node can see (USB serial 'w'), then switches Wi-Fi off again.
+    void scan();
     // Call every loop. Blocks while an upload is in progress (the engine is off).
     void poll(uint32_t nowMs);
 

@@ -32,9 +32,9 @@ class Dash(
         fun closeSplit()
         /** Two short beeps (key on, engine off). */
         fun beep()
-        /** The phone's Wi-Fi hotspot, sent to the CAN node for updates (kept across restarts). */
-        var hotspotSsid: String
-        var hotspotPass: String
+        /** The Wi-Fi network (home Wi-Fi or the phone hotspot) sent to the CAN node for updates, kept across restarts. */
+        var wifiSsid: String
+        var wifiPass: String
     }
 
     /** The map app shown above the tacho in split screen. The first installed package is used. */
@@ -280,8 +280,8 @@ class Dash(
         showToast(if (platform.showThrottle) "THROTTLE SHOWN" else "THROTTLE HIDDEN")
     }
 
-    /** Asks for the hotspot name and password (set by MainActivity); the answer is null if cancelled. */
-    var askHotspot: ((String, String, (Pair<String, String>?) -> Unit) -> Unit)? = null
+    /** Asks for the Wi-Fi name and password (set by MainActivity); the answer is null if cancelled. */
+    var askWifi: ((String, String, (Pair<String, String>?) -> Unit) -> Unit)? = null
 
     /** The node's update-mode status for Diagnostics, or null if it can't be updated from here. */
     val nodeUpdateStatus: String? get() = ble?.otaStatus
@@ -295,26 +295,26 @@ class Dash(
             b.otaStatus == null -> showToast("NODE FIRMWARE HAS NO UPDATE MODE")
             nodeUpdating -> { b.stopNodeOta(); showToast("NODE UPDATE STOPPED") }
             source == Source.LIVE && parser.latest.rpm > 0 -> showToast("STOP THE ENGINE FIRST")
-            platform.hotspotSsid.isEmpty() -> editHotspot { nodeUpdatePress() }
+            platform.wifiSsid.isEmpty() -> editWifi { nodeUpdatePress() }
             else -> {
-                val problem = NodeOta.problem(platform.hotspotSsid, platform.hotspotPass)
+                val problem = NodeOta.problem(platform.wifiSsid, platform.wifiPass)
                 if (problem != null) { showToast(problem); return }
-                b.startNodeOta(platform.hotspotSsid, platform.hotspotPass)
-                showToast("TURN ON THE PHONE HOTSPOT")
+                b.startNodeOta(platform.wifiSsid, platform.wifiPass)
+                showToast("NODE JOINING WI-FI")
             }
         }
     }
 
-    /** Hold NODE UPDATE: change the hotspot details. [then] runs after they're saved. */
-    fun editHotspot(then: (() -> Unit)? = null) {
-        val ask = askHotspot ?: return
-        ask(platform.hotspotSsid, platform.hotspotPass) { answer ->
+    /** Hold NODE UPDATE: change the Wi-Fi details. [then] runs after they're saved. */
+    fun editWifi(then: (() -> Unit)? = null) {
+        val ask = askWifi ?: return
+        ask(platform.wifiSsid, platform.wifiPass) { answer ->
             if (answer == null) return@ask
             val (ssid, pass) = answer.first.trim() to answer.second
             NodeOta.problem(ssid, pass)?.let { showToast(it); return@ask }
-            platform.hotspotSsid = ssid
-            platform.hotspotPass = pass
-            showToast("HOTSPOT SAVED")
+            platform.wifiSsid = ssid
+            platform.wifiPass = pass
+            showToast("WI-FI SAVED")
             then?.invoke()
         }
     }
