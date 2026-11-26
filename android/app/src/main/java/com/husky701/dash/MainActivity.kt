@@ -73,6 +73,12 @@ class MainActivity : Activity(), Dash.Platform {
 
     override fun beep() {
         val t = tone ?: return
+        // key on, engine off warning: always at full volume (alarm stream turned to max first)
+        runCatching {
+            val am = getSystemService(android.media.AudioManager::class.java)
+            val s = android.media.AudioManager.STREAM_ALARM
+            am.setStreamVolume(s, am.getStreamMaxVolume(s), 0)
+        }
         t.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 150)
         main.postDelayed({ t.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 150) }, 300)
     }
