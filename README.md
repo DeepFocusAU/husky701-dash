@@ -7,6 +7,14 @@ An open-source digital dash for a **2023 Husqvarna 701**. A small ESP32 node und
 
 **Docs site:** https://deepfocusau.github.io/husky701-dash/
 
+<p>
+  <a href="https://deepfocusau.github.io/husky701-dash/#dashes"><img src="docs/assets/android-dash-live.jpg" width="210" alt="Android dash on the bike showing live data (click for the video)"></a>
+  <img src="docs/assets/can-node-inside.jpg" width="300" alt="Inside the CAN node enclosure">
+  <img src="docs/assets/can-node-mounted.jpg" width="300" alt="CAN node fitted under the seat">
+</p>
+
+*The Android dash on the bike with live data ([video](https://deepfocusau.github.io/husky701-dash/#dashes)), the CAN node enclosure, and the node fitted under the seat.*
+
 ```
  2023 Husqvarna 701                 Under the seat                         On the handlebars
 ┌──────────────────┐   CAN 500k   ┌──────────────────────────┐  RS-485    ┌──────────────────────┐

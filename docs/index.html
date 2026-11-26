@@ -89,6 +89,9 @@ td.mono, th.mono { white-space: nowrap; }
 video, img.photo { max-width: 100%; border-radius: 12px; border: 1px solid var(--line); background: #000; }
 .media { display: grid; gap: 16px; grid-template-columns: minmax(0, 320px) 1fr; align-items: start; }
 @media (max-width: 720px) { .media { grid-template-columns: 1fr; } }
+.gallery { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 16px 0; }
+.gallery figure { margin: 0; }
+.gallery figcaption { font-size: 0.9em; color: var(--muted, #888); margin-top: 6px; }
 footer { margin-top: 48px; padding: 28px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
 ol li, ul li { margin: 4px 0; }
 </style>
@@ -249,6 +252,18 @@ ol li, ul li { margin: 4px 0; }
     <tr><td class="mono">34</td><td>Battery sense ADC</td><td>Input-only pin, divider as above</td></tr>
     <tr><td class="mono">32</td><td>Piezo tap switch</td><td>Pulses to GND</td></tr>
   </table></div>
+
+  <h3>As built</h3>
+  <div class="gallery">
+    <figure>
+      <img class="photo" src="assets/can-node-inside.jpg" alt="Inside the CAN node enclosure: T-CAN485 board with labelled CAN and RS-485 ports and a 5 V buck module wired on top" loading="lazy">
+      <figcaption>Inside the 3D-printed enclosure: the T-CAN485 with its CAN and RS-485 terminals labelled, the 5 V buck module on top, and the bike cable in through a gland.</figcaption>
+    </figure>
+    <figure>
+      <img class="photo" src="assets/can-node-mounted.jpg" alt="The CAN node enclosure bolted under the seat above the battery, with its cable running forward" loading="lazy">
+      <figcaption>Fitted under the seat on an aluminium bracket above the battery, with the cable running forward to the dash.</figcaption>
+    </figure>
+  </div>
 </section>
 
 <!-- ================================================================== -->
@@ -490,7 +505,17 @@ update: off, fw 1.2     ◀────── reboots on the new firmware</code>
       </ul>
     </div>
   </div>
-  <!--ANDROID-GALLERY-->
+  <h3>On the bike</h3>
+  <div class="media">
+    <video src="assets/android-dash-live.mp4" poster="assets/android-dash-live.jpg" controls muted playsinline preload="metadata" aria-label="16 second clip of the Android dash on the bike showing live data at idle and on a rev"></video>
+    <div>
+      <p>The Note 10 in its handlebar mount above the stock dash, showing live data from the bike: neutral, idle around 1,600 rpm and a blip past 3,300 rpm, coolant 88–90 °C, 14.3 V charging, and the fuel bar and range. The clip ends on the bike's map switch (MAP 1 shows in the header).</p>
+      <ul>
+        <li>Coolant: the radiator fan cuts in at about 105 °C. A spinning fan icon shows while it runs; the over-temperature alarm only fires when the fan isn't coping (112 °C held 30 s, 118 °C held 10 s).</li>
+        <li>Every real ride is recorded on the phone (10 samples a second, with fill-ups), and <code>android/tools/fuel_fit.py</code> tunes the fuel model from full-to-full tanks.</li>
+      </ul>
+    </div>
+  </div>
 </section>
 
 <!-- ================================================================== -->
