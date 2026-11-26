@@ -38,9 +38,20 @@ object DashConfig {
     const val SPLIT_STRIP_FRACTION = 0.20f
 
     // ---- coolant ----
-    const val COOLANT_WARN_C = 105f
-    const val COOLANT_HOT_C = 100f
+    // The ECU fan cuts in at ~105 °C (the old 105 °C alarm came on with it on
+    // the test ride). 100-112 °C is normal fan cycling and stays green; the
+    // over-temp alarm only shows when the fan isn't coping: engine running and
+    // the temperature held above these levels, so spikes and heat soak after
+    // the engine stops are ignored. Same values as the ESP32 dash's config.h.
     const val COOLANT_COLD_C = 60f
+    const val FAN_ON_C = 105f          // fan icon on at/above this...
+    const val FAN_OFF_C = 100f         // ...off again below this
+    const val COOLANT_HOT_C = 112f     // amber once held for...
+    const val COOLANT_HOT_HOLD_MS = 30_000L
+    const val COOLANT_WARN_C = 118f    // red + ENGINE HOT banner once held for...
+    const val COOLANT_WARN_HOLD_MS = 10_000L
+    /** true = fan icon follows Telem.FLAG_FAN from the CAN node; false = inferred from coolant. */
+    const val FAN_FROM_CAN = false
 
     // ---- battery ----
     const val VBAT_LOW_WARN = 12.0f

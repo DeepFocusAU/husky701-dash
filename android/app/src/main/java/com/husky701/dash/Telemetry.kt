@@ -29,6 +29,7 @@ object Telem {
     const val FLAG_STAND_UP = 1 shl 2
     const val FLAG_MAP2 = 1 shl 3
     const val FLAG_THROTTLE_OPEN = 1 shl 4
+    const val FLAG_FAN = 1 shl 5       // radiator fan running (CAN ID to be confirmed)
     const val FLAG_CAN_OK = 1 shl 7
 
     /** CRC-16/CCITT-FALSE (poly 0x1021, init 0xFFFF). */

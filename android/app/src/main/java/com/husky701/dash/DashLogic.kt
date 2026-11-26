@@ -32,6 +32,8 @@ class DashLogic(private val clock: () -> Long = { android.os.SystemClock.elapsed
     var shiftUp = false; private set
     var shiftDown = false; private set
     var coolant = Level.NONE; private set
+    /** Radiator fan running (CAN flag, or inferred from coolant with hysteresis). */
+    var fanOn = false; private set
     var battery = Level.NONE; private set
     var speedKmh: Float? = null; private set
     var speedFromGps = false; private set
@@ -41,6 +43,9 @@ class DashLogic(private val clock: () -> Long = { android.os.SystemClock.elapsed
     private var lugSinceMs = 0L
     private var crankMs = -1_000_000L
     private var wasTurning = false
+    private var hotSinceMs = 0L
+    private var warnSinceMs = 0L
+    private var coolAlarm = 0           // 0 ok, 1 amber, 2 red
 
     fun update(t: Telemetry, alive: Boolean, gps: GpsSample) {
         val now = clock()
@@ -66,11 +71,36 @@ class DashLogic(private val clock: () -> Long = { android.os.SystemClock.elapsed
         if (!lugging) lugSinceMs = 0L else if (lugSinceMs == 0L) lugSinceMs = now
         shiftDown = lugging && now - lugSinceMs >= DashConfig.LUG_HOLD_MS
 
-        coolant = when (val c = if (alive) t.coolantC else null) {
+        // Fan: CAN flag, or coolant with hysteresis (on at FAN_ON_C, off below FAN_OFF_C).
+        val cNow = if (alive) t.coolantC else null
+        val engineRunning = alive && t.rpm > 300
+        fanOn = when {
+            DashConfig.FAN_FROM_CAN -> alive && t.has(Telem.FLAG_FAN)
+            cNow == null || !engineRunning -> false
+            cNow >= DashConfig.FAN_ON_C -> true
+            cNow < DashConfig.FAN_OFF_C -> false
+            else -> fanOn
+        }
+
+        // Over-temp only when the fan isn't coping: engine running and the
+        // temperature held up long enough that the fan clearly isn't pulling it back.
+        val hot = engineRunning && cNow != null && cNow >= DashConfig.COOLANT_HOT_C
+        val warn = engineRunning && cNow != null && cNow >= DashConfig.COOLANT_WARN_C
+        if (!hot) hotSinceMs = 0L else if (hotSinceMs == 0L) hotSinceMs = now
+        if (!warn) warnSinceMs = 0L else if (warnSinceMs == 0L) warnSinceMs = now
+        coolAlarm = when {
+            warnSinceMs != 0L && now - warnSinceMs >= DashConfig.COOLANT_WARN_HOLD_MS -> 2
+            hotSinceMs != 0L && now - hotSinceMs >= DashConfig.COOLANT_HOT_HOLD_MS -> 1
+            !hot -> 0
+            coolAlarm == 2 && !warn -> 1
+            else -> coolAlarm
+        }
+
+        coolant = when (val c = cNow) {
             null -> Level.NONE
             else -> when {
-                c >= DashConfig.COOLANT_WARN_C -> Level.BAD
-                c >= DashConfig.COOLANT_HOT_C -> Level.WARN
+                coolAlarm >= 2 -> Level.BAD
+                coolAlarm == 1 -> Level.WARN
                 c < DashConfig.COOLANT_COLD_C -> Level.COLD
                 else -> Level.GOOD
             }

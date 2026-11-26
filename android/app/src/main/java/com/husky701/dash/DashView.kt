@@ -544,6 +544,8 @@ class DashView(context: Context, private val dash: Dash) : View(context) {
         digits.color = if (coolC == null) faint else col
         c.drawText(coolC?.let { "${f0(it)}°C" } ?: "--°C", right, y - H * 0.020f, digits)
         coolantBar(c, left, right, y + bh * 0.1f, bh * 0.8f, coolC)
+        // radiator fan: spinning cyan fan at the left end, level with the reading
+        if (dash.canOk && dash.logic.fanOn) drawFan(c, left + ts * 0.5f, y - H * 0.034f, ts * 0.55f, cyan)
         labels.textAlign = Paint.Align.CENTER
         labels.textSize = H * 0.016f
         labels.color = label
@@ -766,6 +768,9 @@ class DashView(context: Context, private val dash: Dash) : View(context) {
         val sx1 = W * 0.97f
         panel(c, sx0, top, sx1, bottom)
         val ph = bottom - top
+        // radiator fan, top-left of the speed panel (always on screen, unlike
+        // the coolant value which takes turns with the battery)
+        if (dash.canOk && logic.fanOn) drawFan(c, sx0 + ph * 0.13f, top + ph * 0.13f, ph * 0.09f, cyan)
         digits.textAlign = Paint.Align.RIGHT
         digits.textSize = ph * 0.78f
         val spdText = logic.speedKmh?.let { f0(it) } ?: "--"
@@ -1515,7 +1520,7 @@ class DashView(context: Context, private val dash: Dash) : View(context) {
             "saving  ${if (dash.source == Dash.Source.LIVE) "on" else "off (SIM)"}" to text,
             "" to text,
             "rpm ${t.rpm}  gear ${if (t.gear == Telem.GEAR_UNKNOWN) "?" else t.gear}  thr ${t.throttle}" to text,
-            "coolant ${t.coolantC ?: "?"}  vbat ${t.vbatV ?: "?"}" to text,
+            "coolant ${t.coolantC ?: "?"}${if (dash.logic.fanOn) " fan" else ""}  vbat ${t.vbatV ?: "?"}" to text,
             "wheel F ${t.wheelFront}  R ${t.wheelRear}" to text,
             "CAN ${if (t.has(Telem.FLAG_CAN_OK)) "OK" else "NO DATA"}  clutch ${on(Telem.FLAG_CLUTCH_IN)}  map2 ${on(Telem.FLAG_MAP2)}" to text,
             "kill-run ${on(Telem.FLAG_KILL_RUN)}  stand-up ${on(Telem.FLAG_STAND_UP)}" to text,
@@ -1675,6 +1680,28 @@ class DashView(context: Context, private val dash: Dash) : View(context) {
     }
 
     // ================================================================== icons
+    /** Radiator fan: three swept blades round a hub, turning about once a second. */
+    private fun drawFan(c: Canvas, cx: Float, cy: Float, r: Float, col: Int) {
+        val base = (SystemClock.elapsedRealtime() % 1000L) / 1000f * 360f
+        fill.color = col
+        for (b in 0..2) {
+            val a0 = Math.toRadians((base + b * 120f).toDouble())
+            val a1 = Math.toRadians((base + b * 120f + 52f).toDouble())
+            val p = android.graphics.Path()
+            p.moveTo(cx, cy)
+            p.lineTo(cx + r * Math.cos(a0).toFloat(), cy + r * Math.sin(a0).toFloat())
+            p.quadTo(cx + r * 1.1f * Math.cos((a0 + a1) / 2).toFloat(), cy + r * 1.1f * Math.sin((a0 + a1) / 2).toFloat(),
+                cx + r * Math.cos(a1).toFloat(), cy + r * Math.sin(a1).toFloat())
+            p.close()
+            c.drawPath(p, fill)
+        }
+        fill.color = Color.BLACK
+        c.drawCircle(cx, cy, r * 0.22f, fill)
+        stroke.color = col
+        stroke.strokeWidth = r * 0.12f
+        c.drawCircle(cx, cy, r * 0.22f, stroke)
+    }
+
     private fun drawThermometer(c: Canvas, x: Float, cy: Float, s: Float, col: Int) {
         fill.color = col
         stroke.color = col

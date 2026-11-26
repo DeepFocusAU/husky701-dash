@@ -24,6 +24,7 @@ class Simulator(private val clock: () -> Long = { android.os.SystemClock.elapsed
     private var gear = 0
     private var throttle = 0f
     private var coolantC = 35f
+    private var fanOn = false
     private var vbat = 12.6f
     private var flags = 0
     private var courseDeg = 0f
@@ -37,6 +38,7 @@ class Simulator(private val clock: () -> Long = { android.os.SystemClock.elapsed
         startMs = clock()
         lastFrameMs = startMs
         coolantC = 35f
+        fanOn = false
     }
 
     /** Feeds any frames that are due into the parser. */
@@ -92,14 +94,23 @@ class Simulator(private val clock: () -> Long = { android.os.SystemClock.elapsed
                 clutch = f < 0.15f
                 rpmTarget = if (clutch) 5600f else 5200f - f * 2200f
             }
-            t < 63f -> { phaseName = "hot idle"; gear = 0; rpmTarget = 1550f + noise(50f); coolTarget = 115f }
+            t < 63f -> { phaseName = "hot idle"; gear = 0; rpmTarget = 1550f + noise(50f); coolTarget = 118f }   // heat soak; the fan pulls it back
             else -> { phaseName = "engine off"; running = false; killRun = false; standUp = false; gear = 0; coolTarget = 80f }
         }
         if (!running) rpmTarget = 0f
 
         rpm = approach(rpm, rpmTarget, dt, 0.18f)
         if (rpm < 30f) rpm = 0f
-        coolantC = approach(coolantC, coolTarget, dt, if (coolTarget > coolantC) 6f else 25f)
+        // ECU fan: on at FAN_ON_C, off below FAN_OFF_C; while it runs a running
+        // engine settles a few degrees under the cut-in point
+        fanOn = when {
+            !running -> false
+            coolantC >= DashConfig.FAN_ON_C -> true
+            coolantC < DashConfig.FAN_OFF_C -> false
+            else -> fanOn
+        }
+        if (fanOn) coolTarget = min(coolTarget, DashConfig.FAN_OFF_C - 3f)
+        coolantC = approach(coolantC, coolTarget, dt, if (coolTarget > coolantC) 6f else 12f)
 
         var vTarget = 12.6f
         if (phaseName == "cranking") vTarget = 10.9f
@@ -114,6 +125,7 @@ class Simulator(private val clock: () -> Long = { android.os.SystemClock.elapsed
         if (killRun) flags = flags or Telem.FLAG_KILL_RUN
         if (standUp) flags = flags or Telem.FLAG_STAND_UP
         if (map2) flags = flags or Telem.FLAG_MAP2
+        if (fanOn) flags = flags or Telem.FLAG_FAN
         if (throttle > 0.02f) flags = flags or Telem.FLAG_THROTTLE_OPEN
     }
 

@@ -91,8 +91,8 @@ class Dash(
     private var lastModelMs = 0L
     private var keyOnSinceMs = 0L
     private var battAlertUntil = 0L
-    private val snoozeUntil = LongArray(4)
-    private val shownSince = LongArray(4)
+    private val snoozeUntil = LongArray(5)
+    private val shownSince = LongArray(5)
     private var manualBright = false
     private var lastNight: Boolean? = null
     private var lastBrightness = -1f
@@ -358,7 +358,7 @@ class Dash(
     val nightDimmed get() = lastNight == true && !manualBright
 
     // ------------------------------------------------------------ warnings
-    // Priority: tyres > battery bad > key on > battery weak
+    // Priority: engine hot > tyres > battery bad > key on > battery weak
     private fun pickAlert(t: Telemetry, nowMs: Long) {
         var want: Alert? = null
         fun offer(id: Int, active: Boolean, bad: Boolean, l1: String, l2: String, timed: Boolean) {
@@ -374,6 +374,8 @@ class Dash(
             }
             want = Alert(id, bad, l1, l2)
         }
+        offer(AL_HOT, logic.coolant == Level.BAD, true, "ENGINE HOT",
+            "%.0f °C, fan not coping - stop, engine off".format(t.coolantC ?: 0f), false)
         val f = tpms.front
         val r = tpms.rear
         val fLow = f.valid && !f.stale && f.bar < DashConfig.TPMS_FRONT_LOW_BAR
@@ -394,5 +396,6 @@ class Dash(
         const val AL_TYRE_R = 1
         const val AL_BATT = 2
         const val AL_KEYON = 3
+        const val AL_HOT = 4
     }
 }
