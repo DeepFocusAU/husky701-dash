@@ -113,6 +113,23 @@ $env:JAVA_HOME = "$env:USERPROFILE\Android\jdk-17"
 
 The APK is written to `%USERPROFILE%\Android\build\Husky701.Android\app\outputs\apk\debug\app-debug.apk`. Build output is kept outside OneDrive, because syncing locks files in `build\` and breaks the build. The unit tests check the wire format against `telemetry_packet.h`, along with the CRC, resync, drop counting, the simulator, tap timing, swipes, the key-on beeps and the no-CAN-data rules.
 
+## Ride log
+
+Every real ride (LIVE data, engine turning) is recorded to a CSV on the phone, 10 samples a second:
+rpm, gear, throttle, coolant, fan, battery, wheel and GPS speed, position, the fuel model's
+estimate, and the lugging/shift alerts. A ride ends 2 minutes after the engine stops or CAN data
+stops. Fill-ups saved on the fuel page are written into the log too. SIM data is never recorded.
+Diagnostics shows `ridelog REC ...` while recording. The newest 500 MB are kept.
+
+```powershell
+adb pull /sdcard/Android/data/com.husky701.dash/files/rides rides
+python tools\fuel_fit.py rides
+```
+
+`fuel_fit.py` fits the fuel model to what was really pumped, full tank to full tank: with one tank
+it corrects `FUEL_K_DEFAULT`, with two or more it fits `FUEL_IDLE_LOAD` as well, and prints the
+values to put in `DashConfig.kt` (and the ESP32 dash's `config.h`).
+
 ## Link to the CAN node
 
 | | |

@@ -75,6 +75,9 @@ class Dash(
     /** Heading for the compass rose and map pointer: the phone compass, else the GPS course when moving. */
     val headingDeg: Float? get() = compassDeg ?: if (nav.headingValid) nav.headingDeg else null
 
+    /** Records every real ride to a CSV on the phone (set by MainActivity; null in unit tests). */
+    var rideLog: RideLog? = null
+
     /** what3words lookups; null when not set up. */
     var w3w: What3Words? = null
 
@@ -149,6 +152,7 @@ class Dash(
         }
         tpms.update()
         nav.update(gps)
+        rideLog?.update(live, canOk, t, gps, this)
 
         if (canOk && t.rpm == 0 && speedKmh < 1f) {
             if (keyOnSinceMs == 0L) keyOnSinceMs = nowMs
@@ -186,7 +190,19 @@ class Dash(
 
     fun openFillUp() = fuel.editOpen(speedKmh)
 
-    fun saveFillUp() { if (fuel.editSave()) { trip.resetSinceRefuel(); showToast("FILL-UP SAVED") } }
+    fun saveFillUp() {
+        val full = fuel.editFull
+        val litres = fuel.editLitres
+        val before = fuel.litres
+        val used = fuel.usedSinceFill
+        val km = fuel.kmSinceFill
+        val k = fuel.kNow
+        if (fuel.editSave()) {
+            if (source == Source.LIVE) rideLog?.fillUp(full, litres, before, used, km, k)
+            trip.resetSinceRefuel()
+            showToast("FILL-UP SAVED")
+        }
+    }
 
     fun openSplit() { platform.openSplit(mapApp)?.let { showToast(it) } }
 

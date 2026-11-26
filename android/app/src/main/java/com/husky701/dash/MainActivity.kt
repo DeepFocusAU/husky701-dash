@@ -114,6 +114,7 @@ class MainActivity : Activity(), Dash.Platform {
         gps = PhoneGps(this)
         val store = Store(getSharedPreferences("dashdata", MODE_PRIVATE))
         dash = Dash(parser, simulator, ble, gps, store, this)
+        dash.rideLog = getExternalFilesDir(null)?.let { RideLog(java.io.File(it, "rides")) }
         tpmsScanner = TpmsScanner(this, dash.tpms)
         compass = PhoneCompass(this) { deg ->
             dash.compassDeg = deg
@@ -161,6 +162,7 @@ class MainActivity : Activity(), Dash.Platform {
         gps.stop()
         compass.stop()
         tpmsScanner.stop()
+        dash.rideLog?.stop()
         unregisterReceiver(powerReceiver)
         main.removeCallbacksAndMessages(null)
         super.onDestroy()

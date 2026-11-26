@@ -17,6 +17,8 @@ class FuelModel(private val store: Store, private val clock: () -> Long = { andr
     // persisted
     var litres = 0f; private set
     private var k = 0f
+    /** Current fuel-model constant (litres per engine unit), for the ride log. */
+    val kNow get() = k
     private var unitsSinceFull = 0f
     private var addedSinceFull = 0f
     var usedSinceFill = 0f; private set

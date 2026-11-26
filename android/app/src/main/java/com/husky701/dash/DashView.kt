@@ -900,9 +900,8 @@ class DashView(context: Context, private val dash: Dash) : View(context) {
         val x2 = W * 0.515f
         var ty = H * 0.425f
         drawTile(c, x1, ty, tw, th, "AVG SINCE FILL", if (f.avgL100 > 0) f1(f.avgL100) else "--", "L/100")
-        val stopped = dash.speedKmh < 5f
-        drawTile(c, x2, ty, tw, th, "NOW", if (stopped) f1(f.rateLph) else if (f.instL100 > 0) f1(f.instL100) else "--",
-            if (stopped) "L/h" else "L/100")
+        // always L/100 (no switching to L/h when stopped); "--" below walking pace
+        drawTile(c, x2, ty, tw, th, "NOW", if (f.instL100 > 0) f1(f.instL100) else "--", "L/100")
         ty += th + H * 0.02f
         drawTile(c, x1, ty, tw, th, "USED SINCE FILL", f1(f.usedSinceFill), "L")
         drawTile(c, x2, ty, tw, th, "SINCE FILL", f0(f.kmSinceFill), "km")
@@ -1507,6 +1506,8 @@ class DashView(context: Context, private val dash: Dash) : View(context) {
             "link    ${if (alive) "OK" else "NO LINK"}  ${"%.1f".format(Locale.US, s.framesPerSec)} fps" to (if (alive) green else red),
             "        ok=${s.framesOk} crc=${s.crcErrors} drops=${s.seqDrops}" to text,
             "ble     ${ble?.state ?: "-"} ${ble?.deviceName ?: ""}" to text,
+            "ridelog ${dash.rideLog?.let { if (it.recording) "REC ${it.fileName}" else "idle ${it.fileName}" } ?: "-"}" to
+                (if (dash.rideLog?.recording == true) green else text),
             "        mtu=${ble?.mtu} rssi=${ble?.rssi} reconn=${ble?.reconnects}" to text,
             "node    sending ${when (ble?.nodeSim) { true -> "SIM data"; false -> "LIVE bike data"; null -> "-" }}" to
                 (if (ble?.nodeSim != null && ble.nodeSim != (dash.source == Dash.Source.SIM)) amber else text),
